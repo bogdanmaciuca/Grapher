@@ -1,0 +1,16 @@
+# The stuff we want to run (just `db` here)
+services:
+  db:
+    image: postgres:15 # The precompiled package to download
+    container_name: grapher_db
+    environment:       # Environment variables for this process
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PWD}
+      POSTGRES_DB: grapherdb
+    ports:             # Maps container ports to host ports
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
