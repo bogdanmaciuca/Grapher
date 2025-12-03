@@ -60,3 +60,13 @@ To view logs: `docker compose logs -f`
 
 ## C#
 
+### Attributes
+```cs
+using System.ComponentModel.DataAnnotations; // Required, StringLength etc
+using System.ComponentModel.DataAnnotations.Schema; // Key, ForeignKey, Timestamp etc
+```
+
+- `[Key]` -> `PRIMARY KEY`
+- `[Required]` -> `NOT NULL`
+- `[ForeignKey("MyId)]` -> corresponds to the ID stored in `MyId`
+
