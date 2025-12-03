@@ -17,6 +17,7 @@ public class ApplicationDbContext : IdentityDbContext {
     public DbSet<TaskAssignment> TaskAssignments { get; set; }
     public DbSet<Attachment> Attachments { get; set; }
     public DbSet<Comment> Comments { get; set; }
+    public DbSet<UserProfile> UserProfiles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder) {
         base.OnModelCreating(builder);
@@ -31,6 +32,12 @@ public class ApplicationDbContext : IdentityDbContext {
             .HasOne(p => p.AISummary)
             .WithOne(s => s.Project)
             .HasForeignKey<ProjectAISummary>(s => s.ProjectId);
+
+        builder.Entity<UserProfile>()
+            .HasOne(up => up.User)
+            .WithOne()
+            .HasForeignKey<UserProfile>(up => up.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     } 
 }
 

@@ -5,7 +5,7 @@ using Grapher.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// add services to the container
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(
         options => options.UseNpgsql(connectionString));
@@ -30,7 +30,7 @@ builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSe
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
