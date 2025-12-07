@@ -1,26 +1,22 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
-namespace Grapher.Models;
+namespace Grapher.Models
+{
+    public class ProjectMember
+    {
+        public long ProjectId { get; set; }
+        [ForeignKey("ProjectId")]
+        public virtual Project Project { get; set; }
 
-[PrimaryKey(nameof(ProjectId), nameof(UserId))]
-public class ProjectMember {
-    // Part 1 of the Key
-    public int ProjectId { get; set; }
+        public string UserId { get; set; }
+        [ForeignKey("UserId")]
+        public virtual ApplicationUser User { get; set; }
 
-    [ForeignKey("ProjectId")]
-    public Project? Project { get; set; }
+        [Required]
+        [StringLength(50)]
+        public string Role { get; set; } = "Member";
 
-    // Part 2 of the Key
-    public string UserId { get; set; } = string.Empty;
-
-    [ForeignKey("UserId")]
-    public IdentityUser? User { get; set; }
-
-    public string Role { get; set; } = "Member";
-
-    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+        public DateTime JoinedAt { get; set; } = DateTime.Now;
+    }
 }
-

@@ -1,18 +1,21 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Grapher.Models;
+namespace Grapher.Models
+{
+    public class Attachment
+    {
+        [Key]
+        public long Id { get; set; }
 
-public class Attachment {
-    [Key]
-    public int Id { get; set; }
+        [Required]
+        public string Url { get; set; }
 
-    public int TaskId { get; set; }
-    [ForeignKey("TaskId")]
-    public TaskItem? Task { get; set; }
+        [Required]
+        public string Type { get; set; }
 
-    public string Url { get; set; } = string.Empty;
-
-    // e.g., "image/jpeg", "application/pdf"
-    public string Type { get; set; } = string.Empty;
+        public long TaskId { get; set; }
+        [ForeignKey("TaskId")]
+        public virtual TaskItem Task { get; set; }
+    }
 }

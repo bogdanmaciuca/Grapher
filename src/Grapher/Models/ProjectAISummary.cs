@@ -1,20 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Grapher.Models;
+namespace Grapher.Models
+{
+    public class ProjectAiSummary
+    {
+        [Key, ForeignKey("Project")]
+        public long ProjectId { get; set; }
 
-public class ProjectAISummary {
-    [Key]
-    public int Id { get; set; }
+        public virtual Project Project { get; set; }
 
-    // Foreign key
-    public int ProjectId { get; set; }
+        public string? SummaryText { get; set; }
 
-    [ForeignKey("ProjectId")]
-    public Project? Project { get; set; }
-
-    public string SummaryText { get; set; } = string.Empty;
-
-    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+        public DateTime? LastUpdated { get; set; }
+    }
 }
-
