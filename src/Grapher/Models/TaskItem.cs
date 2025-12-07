@@ -16,8 +16,8 @@ namespace Grapher.Models
 
         public TaskStatus Status { get; set; } = TaskStatus.NotStarted;
 
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
+        public DateTime StartDate { get; set; } = DateTime.UtcNow;
+        public DateTime? EndDate { get; set; }
 
         public int ProjectId { get; set; }
         [ForeignKey("ProjectId")]
