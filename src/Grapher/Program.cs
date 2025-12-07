@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Grapher.Data;
 using Grapher.Services;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
