@@ -36,6 +36,8 @@ namespace Grapher.Controllers
 
             var project = await _context.Projects
                 .Include(p => p.Organizer)
+                .Include(p => p.Tasks)
+                .ThenInclude(t => t.Assignments)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (project == null)
             {
