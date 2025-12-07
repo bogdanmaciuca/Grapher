@@ -6,22 +6,22 @@ namespace Grapher.Models
     public class Project
     {
         [Key]
-        public long Id { get; set; }
+        public int Id { get; set; }
 
         [Required]
         [StringLength(150)]
-        public string Title { get; set; }
+        public required string Title { get; set; }
 
         [Required]
-        public string Description { get; set; }
+        public required string Description { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; }
 
         [Required]
-        public string OrganizerId { get; set; }
+        public required string OrganizerId { get; set; }
 
         [ForeignKey("OrganizerId")]
-        public virtual ApplicationUser Organizer { get; set; }
+        public virtual ApplicationUser? Organizer { get; set; }
 
         public virtual ProjectAiSummary? AiSummary { get; set; }
         public virtual ICollection<ProjectMember> Members { get; set; } = new List<ProjectMember>();

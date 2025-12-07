@@ -48,7 +48,7 @@ namespace Grapher.Controllers
         // GET: Projects/Create
         public IActionResult Create()
         {
-            ViewData["OrganizerId"] = new SelectList(_context.Users, "Id", "Id");
+            ViewData["OrganizerId"] = new SelectList(_context.Users, "Id", "UserName");
             return View();
         }
 
@@ -57,15 +57,16 @@ namespace Grapher.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Title,CreatedAt,OrganizerId")] Project project)
+        public async Task<IActionResult> Create([Bind("Title,Description,OrganizerId")] Project project)
         {
             if (ModelState.IsValid)
             {
+                project.CreatedAt = DateTime.UtcNow;
                 _context.Add(project);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["OrganizerId"] = new SelectList(_context.Users, "Id", "Id", project.OrganizerId);
+            ViewData["OrganizerId"] = new SelectList(_context.Users, "Id", "UserName", project.OrganizerId);
             return View(project);
         }
 
@@ -82,7 +83,7 @@ namespace Grapher.Controllers
             {
                 return NotFound();
             }
-            ViewData["OrganizerId"] = new SelectList(_context.Users, "Id", "Id", project.OrganizerId);
+            ViewData["OrganizerId"] = new SelectList(_context.Users, "Id", "UserName", project.OrganizerId);
             return View(project);
         }
 
@@ -91,7 +92,7 @@ namespace Grapher.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,CreatedAt,OrganizerId")] Project project)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,OrganizerId")] Project project)
         {
             if (id != project.Id)
             {
@@ -118,7 +119,7 @@ namespace Grapher.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["OrganizerId"] = new SelectList(_context.Users, "Id", "Id", project.OrganizerId);
+            ViewData["OrganizerId"] = new SelectList(_context.Users, "Id", "UserName", project.OrganizerId);
             return View(project);
         }
 

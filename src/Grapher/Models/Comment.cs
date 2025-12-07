@@ -6,21 +6,21 @@ namespace Grapher.Models
     public class Comment
     {
         [Key]
-        public long Id { get; set; }
+        public int Id { get; set; }
 
         [Required]
-        public string Content { get; set; }
+        public required string Content { get; set; }
 
-        public DateTime PostedAt { get; set; } = DateTime.Now;
+        public DateTime PostedAt { get; set; } = DateTime.UtcNow;
 
-        public long TaskId { get; set; }
+        public int TaskId { get; set; }
         [ForeignKey("TaskId")]
-        public virtual TaskItem Task { get; set; }
+        public virtual TaskItem? Task { get; set; }
 
         [Required]
-        public string AuthorId { get; set; }
+        public required string AuthorId { get; set; }
         [ForeignKey("AuthorId")]
-        public virtual ApplicationUser Author { get; set; }
+        public virtual ApplicationUser? Author { get; set; }
     }
 }
 

@@ -5,18 +5,18 @@ namespace Grapher.Models
 {
     public class ProjectMember
     {
-        public long ProjectId { get; set; }
+        public int ProjectId { get; set; }
         [ForeignKey("ProjectId")]
-        public virtual Project Project { get; set; }
+        public virtual Project? Project { get; set; }
 
-        public string UserId { get; set; }
+        public required string UserId { get; set; }
         [ForeignKey("UserId")]
-        public virtual ApplicationUser User { get; set; }
+        public virtual ApplicationUser? User { get; set; }
 
         [Required]
         [StringLength(50)]
-        public string Role { get; set; } = "Member";
+        public required string Role { get; set; }
 
-        public DateTime JoinedAt { get; set; } = DateTime.Now;
+        public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
     }
 }

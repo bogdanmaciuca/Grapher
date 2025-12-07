@@ -1,6 +1,6 @@
 ﻿namespace Grapher.Models
 {
-    public enum TaskStatusEnum
+    public enum TaskStatus
     {
         NotStarted = 0,
         InProgress = 1,

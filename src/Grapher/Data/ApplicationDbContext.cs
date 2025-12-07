@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using TaskManager.Models;
+using Grapher.Models;
 
 namespace Grapher.Data
 {
@@ -23,6 +23,9 @@ namespace Grapher.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<ProjectAiSummary>()
+                .HasKey(s => s.ProjectId);
 
             builder.Entity<ProjectMember>()
                 .HasKey(pm => new { pm.ProjectId, pm.UserId });
@@ -54,25 +57,34 @@ namespace Grapher.Data
                 .HasForeignKey(ta => ta.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure Project relationships
             builder.Entity<Project>()
                 .HasOne(p => p.Organizer)
                 .WithMany(u => u.OrganizedProjects)
                 .HasForeignKey(p => p.OrganizerId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure ProjectAiSummary (1:1 with Project)
             builder.Entity<ProjectAiSummary>()
                 .HasOne(s => s.Project)
                 .WithOne(p => p.AiSummary)
                 .HasForeignKey<ProjectAiSummary>(s => s.ProjectId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure TaskItem relationships
             builder.Entity<TaskItem>()
-                .HasOne(t => t.Project)
-                .WithMany(p => p.Tasks)
-                .HasForeignKey(t => t.ProjectId)
+                .HasMany(t => t.Assignments)
+                .WithOne(ta => ta.Task)
+                .HasForeignKey(ta => ta.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<TaskItem>()
+                .HasMany(t => t.Comments)
+                .WithOne(c => c.Task)
+                .HasForeignKey(c => c.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<TaskItem>()
+                .HasMany(t => t.Attachments)
+                .WithOne(a => a.Task)
+                .HasForeignKey(a => a.TaskId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<TaskItem>()
@@ -82,7 +94,6 @@ namespace Grapher.Data
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // Configure Comment relationships
             builder.Entity<Comment>()
                 .HasOne(c => c.Task)
                 .WithMany(t => t.Comments)
@@ -95,14 +106,12 @@ namespace Grapher.Data
                 .HasForeignKey(c => c.AuthorId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure Attachment relationships
             builder.Entity<Attachment>()
                 .HasOne(a => a.Task)
                 .WithMany(t => t.Attachments)
                 .HasForeignKey(a => a.TaskId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Configure UserProfile (1:1 with ApplicationUser)
             builder.Entity<UserProfile>()
                 .HasOne(up => up.User)
                 .WithOne(u => u.Profile)
@@ -111,4 +120,3 @@ namespace Grapher.Data
         }
     }
 }
-

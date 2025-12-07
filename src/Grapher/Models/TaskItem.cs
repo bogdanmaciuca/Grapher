@@ -6,22 +6,22 @@ namespace Grapher.Models
     public class TaskItem
     {
         [Key]
-        public long Id { get; set; }
+        public int Id { get; set; }
 
         [Required]
         [StringLength(200)]
-        public string Title { get; set; }
+        public required string Title { get; set; }
 
         public string? Description { get; set; }
 
-        public TaskStatusEnum Status { get; set; } = TaskStatusEnum.NotStarted;
+        public TaskStatus Status { get; set; } = TaskStatus.NotStarted;
 
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 
-        public long ProjectId { get; set; }
+        public int ProjectId { get; set; }
         [ForeignKey("ProjectId")]
-        public virtual Project Project { get; set; }
+        public virtual Project? Project { get; set; }
 
         public string? AssigneeId { get; set; }
         [ForeignKey("AssigneeId")]
