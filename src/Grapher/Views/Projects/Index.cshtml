@@ -1,47 +1,73 @@
 @model IEnumerable<Grapher.Models.Project>
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
 
 @{
-    ViewData["Title"] = "Index";
+ViewData["Title"] = "Projects";
+var currentUser = await UserManager.GetUserAsync(User);
+var isAdmin = User.IsInRole("Administrator");
+var isMember = User.IsInRole("Member");
 }
 
-<h1>Index</h1>
+<h1>Projects</h1>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
+@if (User.Identity.IsAuthenticated && isMember)
+{
+    <p>
+        <a asp-action="Create" class="btn btn-success">+ Create New Project</a>
+    </p>
+}
+
+@if (!User.Identity.IsAuthenticated)
+{
+    <div class="alert alert-info">
+        <a asp-area="Identity" asp-page="/Account/Login">Login</a> or
+        <a asp-area="Identity" asp-page="/Account/Register">Register</a> to create projects.
+    </div>
+}
+
+<div class="table-responsive">
+<table class="table table-striped">
+    <thead class="table-dark">
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Title)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.CreatedAt)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Organizer)
-            </th>
-            <th></th>
+        <th>Title</th>
+            <th>Description</th>
+            <th>Organizer</th>
+            <th>Created</th>
+            @if (User.Identity.IsAuthenticated)
+            {
+                <th>Actions</th>
+            }
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
+        @foreach (var item in Model)
+        {
+            <tr>
+            <td><strong>@item.Title</strong></td>
+            <td>@item.Description</td>
+            <td>@item.Organizer?.UserName</td>
+            <td>@item.CreatedAt.ToString("g")</td>
+            @if (User.Identity.IsAuthenticated)
+            {
             <td>
-                @Html.DisplayFor(modelItem => item.Title)
+                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">View</a>
+                @if (isAdmin || item.OrganizerId == currentUser?.Id)
+                {
+                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Edit</a>
+                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Delete</a>
+                }
             </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.CreatedAt)
-            </td>
-            <td>
-                @(item.Organizer != null ? item.Organizer.UserName : "N/A")
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
+            }
         </tr>
-}
+        }
     </tbody>
 </table>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-warning">
+        No projects found. <a asp-action="Create">Create the first one!</a>
+    </div>
+}
