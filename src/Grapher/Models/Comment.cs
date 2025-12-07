@@ -22,3 +22,4 @@ public class Comment {
 
     public DateTime PostedAt { get; set; } = DateTime.UtcNow;
 }
+
