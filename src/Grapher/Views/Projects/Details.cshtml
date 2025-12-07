@@ -30,6 +30,28 @@
         </dd>
     </dl>
 </div>
+<hr />
+<h3>Tasks in this Project</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Due Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var task in Model.Tasks)
+        {
+        <tr>
+            <td>@task.Title</td>
+            <td>@task.Status</td>
+            <td>@task.EndDate.ToShortDateString()</td>
+        </tr>
+        }
+    </tbody>
+</table>
 <div>
     <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
     <a asp-action="Index">Back to List</a>
