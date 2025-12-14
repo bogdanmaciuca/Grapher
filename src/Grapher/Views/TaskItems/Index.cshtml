@@ -1,59 +1,62 @@
 @model IEnumerable<Grapher.Models.TaskItem>
 
-@{
-    ViewData["Title"] = "Index";
-}
+    @{
+    ViewData["Title"] = "Tasks";
+    }
 
-<h1>Index</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-dark">Tasks</h2>
+        <a asp-action="Create" class="btn btn-primary shadow-sm rounded-pill px-4">+ New Task</a>
+    </div>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Project)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Title)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Description)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Status)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.EndDate)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @(item.Project != null ? item.Project.Title : "N/A")
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Title)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Description)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Status)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.EndDate)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        @foreach (var item in Model)
+        {
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm shadow-hover" style="border-radius: 12px; transition: 0.2s;">
+                <div class="card-body d-flex flex-column">
+
+                    <div class="mb-3">
+                        <h5 class="card-title fw-bold mb-1">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none text-dark stretched-link">
+                                @item.Title
+                            </a>
+                        </h5>
+                        <small class="text-muted">
+                            Project: @(item.Project != null ? item.Project.Title : "N/A")
+                        </small>
+                    </div>
+
+                    <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                        <span class="badge bg-light text-dark border">
+                            Status: @item.Status
+                        </span>
+                        @if (item.EndDate.HasValue)
+                        {
+                        <span class="badge bg-light text-dark border">
+                            Due: @item.EndDate.Value.ToString("MMM dd, yyyy")
+                        </span>
+                        }
+                    </div>
+
+                </div>
+
+                <div class="card-footer bg-white border-0 pt-0 pb-3">
+                    <div class="d-flex justify-content-end gap-2" style="position: relative; z-index: 2;">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Edit</a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger rounded-pill px-3">Delete</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+
+    @if (!Model.Any())
+    {
+    <div class="text-center py-5 text-muted">
+        <div class="display-1 mb-3">📭</div>
+        <h4>No tasks yet</h4>
+        <p>Create your first task to get started!</p>
+    </div>
+    }

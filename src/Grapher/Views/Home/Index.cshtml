@@ -1,8 +1,57 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="jumbotron text-center bg-white border-bottom shadow-sm pt-5 pb-5 mb-5">
+    <h1 class="display-3 fw-bold text-dark">Manage Projects with <span class="text-primary">Grapher</span></h1>
+    <p class="lead text-muted mt-3 mb-4">
+        The all-in-one workspace for students and developers. <br />
+        Visualize tasks, track progress, and collaborate seamlessly.
+    </p>
+    <div class="d-flex justify-content-center gap-3">
+        @if (User.Identity.IsAuthenticated)
+        {
+        <a asp-controller="Projects" asp-action="Index" class="btn btn-primary btn-lg px-5 shadow">Go to Dashboard</a>
+        }
+        else
+        {
+        <a href="/Identity/Account/Register" class="btn btn-primary btn-lg px-5 shadow">Get Started</a>
+        <a href="/Identity/Account/Login" class="btn btn-outline-secondary btn-lg px-5">Log In</a>
+        }
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row text-center g-4">
+
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-hover p-3">
+                <div class="card-body">
+                    <div class="display-4 text-primary mb-3">📂</div> <h3 class="card-title h4">Organize Projects</h3>
+                    <p class="card-text text-muted">Keep all your assignments and coding projects in one structured place.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-hover p-3">
+                <div class="card-body">
+                    <div class="display-4 text-success mb-3">📊</div>
+                    <h3 class="card-title h4">Visualize Tasks</h3>
+                    <p class="card-text text-muted">Use our Kanban board to track what's To-Do, In Progress, and Done.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-hover p-3">
+                <div class="card-body">
+                    <div class="display-4 text-info mb-3">🤖</div>
+                    <h3 class="card-title h4">AI Powered</h3>
+                    <p class="card-text text-muted">Generate summaries and insights for your project deadlines automatically.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
 </div>

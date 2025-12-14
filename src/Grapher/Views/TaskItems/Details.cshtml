@@ -1,48 +1,54 @@
 @model Grapher.Models.TaskItem
 
-@{
-    ViewData["Title"] = "Details";
-}
+    @{
+    ViewData["Title"] = "Task Details";
+    }
 
-<h1>Details</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-dark">@Model.Title</h2>
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-4">Edit</a>
+            <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Back to List</a>
+        </div>
+    </div>
 
-<div>
-    <h4>TaskItem</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Project)
-        </dt>
-        <dd class = "col-sm-10">
-            @(Model.Project != null ? Model.Project.Title : "N/A")
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Title)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Title)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Description)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Description)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Status)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Status)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.EndDate)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.EndDate)
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
-</div>
+    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+        <div class="card-body">
+            <dl class="row mt-3">
+                <dt class="col-sm-3">
+                    @Html.DisplayNameFor(model => model.Project)
+                </dt>
+                <dd class="col-sm-9">
+                    @(Model.Project != null ? Model.Project.Title : "N/A")
+                </dd>
+
+                <dt class="col-sm-3">
+                    @Html.DisplayNameFor(model => model.Description)
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.Description)
+                </dd>
+
+                <dt class="col-sm-3">
+                    @Html.DisplayNameFor(model => model.Status)
+                </dt>
+                <dd class="col-sm-9">
+                    <span class="badge bg-light text-dark border">@Model.Status</span>
+                </dd>
+
+                <dt class="col-sm-3">
+                    @Html.DisplayNameFor(model => model.EndDate)
+                </dt>
+                <dd class="col-sm-9">
+                    @if (Model.EndDate.HasValue)
+                    {
+                    <span>@Model.EndDate.Value.ToString("MMMM dd, yyyy")</span>
+                    }
+                    else
+                    {
+                    <span class="text-muted">Not set</span>
+                    }
+                </dd>
+            </dl>
+        </div>
+    </div>
