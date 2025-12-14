@@ -1,4 +1,6 @@
 @model IEnumerable<Grapher.Models.Project>
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<ApplicationUser> UserManager
 
     @{
     ViewData["Title"] = "My Projects";

@@ -5,7 +5,7 @@ namespace Grapher.Models
 {
     public class ApplicationUser : IdentityUser
     {
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;  // CHANGED: DateTime.Now -> DateTime.UtcNow
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? LastLogin { get; set; }
 
