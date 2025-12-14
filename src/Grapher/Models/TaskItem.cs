@@ -23,9 +23,10 @@ namespace Grapher.Models
         [ForeignKey("ProjectId")]
         public virtual Project? Project { get; set; }
 
-        public string? AssigneeId { get; set; }
-        [ForeignKey("AssigneeId")]
-        public virtual ApplicationUser? Assignee { get; set; }
+        [Required]
+        public required string CreatorId { get; set; }
+        [ForeignKey("CreatorId")]
+        public virtual ApplicationUser Creator { get; set; }
 
         public virtual ICollection<TaskAssignment> Assignments { get; set; } = new List<TaskAssignment>();
         public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();

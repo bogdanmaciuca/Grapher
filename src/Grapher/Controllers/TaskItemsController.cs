@@ -8,15 +8,20 @@ using Microsoft.EntityFrameworkCore;
 using Grapher.Data;
 using Grapher.Models;
 
+using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
+
 namespace Grapher.Controllers
 {
     public class TaskItemsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public TaskItemsController(ApplicationDbContext context)
+        public TaskItemsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: TaskItems
@@ -36,6 +41,9 @@ namespace Grapher.Controllers
 
             var taskItem = await _context.TaskItems
                 .Include(t => t.Project)
+                .Include(t => t.Creator)
+                .Include(t => t.Assignments)
+                    .ThenInclude(a => a.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (taskItem == null)
             {
@@ -49,6 +57,7 @@ namespace Grapher.Controllers
         public IActionResult Create()
         {
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title");
+            ViewData["Users"] = new SelectList(_context.Users, "Id", "UserName");
             return View();
         }
 
@@ -57,15 +66,27 @@ namespace Grapher.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate")] TaskItem taskItem)
+        public async Task<IActionResult> Create([Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate")] TaskItem taskItem, string[] selectedUsers)
         {
             if (ModelState.IsValid)
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                taskItem.CreatorId = userId;
+
+                if (selectedUsers != null)
+                {
+                    foreach (var user in selectedUsers)
+                    {
+                        taskItem.Assignments.Add(new TaskAssignment { UserId = user });
+                    }
+                }
+
                 _context.Add(taskItem);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title", taskItem.ProjectId);
+            ViewData["Users"] = new SelectList(_context.Users, "Id", "UserName");
             return View(taskItem);
         }
 
@@ -77,12 +98,14 @@ namespace Grapher.Controllers
                 return NotFound();
             }
 
-            var taskItem = await _context.TaskItems.FindAsync(id);
+            var taskItem = await _context.TaskItems.Include(t => t.Assignments).FirstOrDefaultAsync(t => t.Id == id);
             if (taskItem == null)
             {
                 return NotFound();
             }
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title", taskItem.ProjectId);
+            var userIds = taskItem.Assignments.Select(a => a.UserId).ToList();
+            ViewData["Users"] = new MultiSelectList(_context.Users, "Id", "UserName", userIds);
             return View(taskItem);
         }
 
@@ -91,7 +114,7 @@ namespace Grapher.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate")] TaskItem taskItem)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate")] TaskItem taskItem, string[] selectedUsers)
         {
             if (id != taskItem.Id)
             {
@@ -102,12 +125,34 @@ namespace Grapher.Controllers
             {
                 try
                 {
-                    _context.Update(taskItem);
+                    var taskToUpdate = await _context.TaskItems.Include(t => t.Assignments).FirstOrDefaultAsync(t => t.Id == id);
+                    if (taskToUpdate == null)
+                    {
+                        return NotFound();
+                    }
+
+                    taskToUpdate.ProjectId = taskItem.ProjectId;
+                    taskToUpdate.Title = taskItem.Title;
+                    taskToUpdate.Description = taskItem.Description;
+                    taskToUpdate.Status = taskItem.Status;
+                    taskToUpdate.StartDate = taskItem.StartDate;
+                    taskToUpdate.EndDate = taskItem.EndDate;
+
+                    taskToUpdate.Assignments.Clear();
+                    if (selectedUsers != null)
+                    {
+                        foreach (var userId in selectedUsers)
+                        {
+                            taskToUpdate.Assignments.Add(new TaskAssignment { UserId = userId });
+                        }
+                    }
+
+                    _context.Update(taskToUpdate);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!TaskItemExists(taskItem.Id))
+                if (!TaskItemExists(taskItem.Id))
                     {
                         return NotFound();
                     }
@@ -119,6 +164,7 @@ namespace Grapher.Controllers
                 return RedirectToAction(nameof(Index));
             }
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title", taskItem.ProjectId);
+            ViewData["Users"] = new MultiSelectList(_context.Users, "Id", "UserName", selectedUsers);
             return View(taskItem);
         }
 

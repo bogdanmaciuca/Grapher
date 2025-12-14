@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Grapher.Models;
 
 namespace Grapher.Data
@@ -8,11 +9,24 @@ namespace Grapher.Data
     {
         public static async Task Initialize(IServiceProvider serviceProvider)
         {
+            // get a logger early so we can report problems
+            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger("SeedData");
+
             using (var context = new ApplicationDbContext(
                 serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>()))
             {
-                // Ensure the database is created
-                context.Database.EnsureCreated();
+                try
+                {
+                    // Prefer migrations when using EF migrations
+                    await context.Database.MigrateAsync();
+                }
+                catch (Exception ex)
+                {
+                    // fall back but log — this helps diagnose local dev issues
+                    logger.LogWarning(ex, "Migration failed, falling back to EnsureCreated()");
+                    context.Database.EnsureCreated();
+                }
 
                 var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
                 var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -22,7 +36,7 @@ namespace Grapher.Data
                 await EnsureRoleAsync(roleManager, "Member");
 
                 // ===== SEED TEST USERS =====
-                
+
                 // Admin User
                 await SeedAdminUserAsync(userManager, "admin@grapher.com", "Admin123!");
 
@@ -39,10 +53,35 @@ namespace Grapher.Data
                 await SeedSampleProjectsAsync(context, userManager);
 
                 // ===== SEED SAMPLE TASKS =====
-                await SeedSampleTasksAsync(context);
+                await SeedSampleTasksAsync(context, userManager);
 
                 // ===== SEED SAMPLE COMMENTS =====
                 await SeedSampleCommentsAsync(context, userManager);
+
+                // DIAGNOSTIC LOGGING: list users and projects so you can verify association
+                try
+                {
+                    var users = await userManager.Users.ToListAsync();
+                    logger.LogInformation("Seeded users ({Count}):", users.Count);
+                    foreach (var u in users)
+                    {
+                        logger.LogInformation("  User: {Email} Id: {Id}", u.Email, u.Id);
+                    }
+
+                    var projects = await context.Projects.AsNoTracking().ToListAsync();
+                    logger.LogInformation("Seeded projects ({Count}):", projects.Count);
+                    foreach (var p in projects)
+                    {
+                        var organizer = await userManager.FindByIdAsync(p.OrganizerId);
+                        var organizerEmail = organizer?.Email ?? "(organizer id not found)";
+                        logger.LogInformation("  Project: {Title} Id: {Id} OrganizerId: {OrgId} OrganizerEmail: {OrgEmail}",
+                            p.Title, p.Id, p.OrganizerId, organizerEmail);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Failed to write diagnostic logs after seeding.");
+                }
             }
         }
 
@@ -155,8 +194,12 @@ namespace Grapher.Data
             }
 
             // Alice and Bob will be organizers
-            var alice = users.FirstOrDefault(u => u.Email == "alice@grapher.com");
-            var bob = users.FirstOrDefault(u => u.Email == "bob@grapher.com");
+            var alice = await userManager.FindByEmailAsync("alice@grapher.com");
+            var bob = await userManager.FindByEmailAsync("bob@grapher.com");
+
+            // if specific users not found fall back to first two users
+            var aliceId = alice?.Id ?? users[0].Id;
+            var bobId = bob?.Id ?? (users.Count > 1 ? users[1].Id : users[0].Id);
 
             var projects = new[]
             {
@@ -165,21 +208,21 @@ namespace Grapher.Data
                     Title = "Customer Portal Redesign",
                     Description = "Modernize the customer-facing portal with improved UI/UX and accessibility features.",
                     CreatedAt = referenceDate.AddDays(-30),
-                    OrganizerId = alice?.Id ?? users[0].Id
+                    OrganizerId = aliceId
                 },
                 new Project
                 {
                     Title = "API Performance Optimization",
                     Description = "Improve API response times and scalability through database optimization and caching strategies.",
                     CreatedAt = referenceDate.AddDays(-20),
-                    OrganizerId = bob?.Id ?? users[1].Id
+                    OrganizerId = bobId
                 },
                 new Project
                 {
                     Title = "Mobile App MVP",
                     Description = "Develop a minimum viable product for our mobile application focusing on core features.",
                     CreatedAt = referenceDate.AddDays(-15),
-                    OrganizerId = alice?.Id ?? users[0].Id
+                    OrganizerId = aliceId
                 }
             };
 
@@ -190,7 +233,7 @@ namespace Grapher.Data
         /// <summary>
         /// Seeds sample tasks for projects
         /// </summary>
-        private static async Task SeedSampleTasksAsync(ApplicationDbContext context)
+        private static async Task SeedSampleTasksAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             // Only seed if no tasks exist
             if (await context.TaskItems.AnyAsync())
@@ -200,8 +243,9 @@ namespace Grapher.Data
 
             var referenceDate = new DateTime(2025, 11, 03, 0, 0, 0, DateTimeKind.Utc);
             var projects = await context.Projects.ToListAsync();
+            var adminUser = await userManager.FindByEmailAsync("admin@grapher.com");
 
-            if (!projects.Any())
+            if (!projects.Any() || adminUser == null)
             {
                 return;
             }
@@ -215,7 +259,8 @@ namespace Grapher.Data
                     ProjectId = projects[0].Id,
                     Status = Models.TaskStatus.InProgress,
                     StartDate = referenceDate.AddDays(-25),
-                    EndDate = referenceDate.AddDays(5)
+                    EndDate = referenceDate.AddDays(5),
+                    CreatorId = adminUser.Id
                 },
                 new TaskItem
                 {
@@ -224,7 +269,8 @@ namespace Grapher.Data
                     ProjectId = projects[0].Id,
                     Status = Models.TaskStatus.NotStarted,
                     StartDate = referenceDate.AddDays(-20),
-                    EndDate = referenceDate.AddDays(10)
+                    EndDate = referenceDate.AddDays(10),
+                    CreatorId = adminUser.Id
                 },
                 new TaskItem
                 {
@@ -233,7 +279,8 @@ namespace Grapher.Data
                     ProjectId = projects[1].Id,
                     Status = Models.TaskStatus.InProgress,
                     StartDate = referenceDate.AddDays(-18),
-                    EndDate = referenceDate.AddDays(3)
+                    EndDate = referenceDate.AddDays(3),
+                    CreatorId = adminUser.Id
                 },
                 new TaskItem
                 {
@@ -242,7 +289,8 @@ namespace Grapher.Data
                     ProjectId = projects[1].Id,
                     Status = Models.TaskStatus.Completed,
                     StartDate = referenceDate.AddDays(-15),
-                    EndDate = referenceDate.AddDays(-5)
+                    EndDate = referenceDate.AddDays(-5),
+                    CreatorId = adminUser.Id
                 },
                 new TaskItem
                 {
@@ -251,7 +299,8 @@ namespace Grapher.Data
                     ProjectId = projects[2].Id,
                     Status = Models.TaskStatus.InProgress,
                     StartDate = referenceDate.AddDays(-12),
-                    EndDate = referenceDate.AddDays(8)
+                    EndDate = referenceDate.AddDays(8),
+                    CreatorId = adminUser.Id
                 }
             };
 
@@ -274,7 +323,7 @@ namespace Grapher.Data
             var tasks = await context.TaskItems.ToListAsync();
             var users = await userManager.Users.ToListAsync();
 
-            if (!tasks.Any() || !users.Any())
+            if (tasks.Count < 3 || users.Count < 3)
             {
                 return;
             }

@@ -87,13 +87,6 @@ namespace Grapher.Data
                 .HasForeignKey(a => a.TaskId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            builder.Entity<TaskItem>()
-                .HasOne(t => t.Assignee)
-                .WithMany()
-                .HasForeignKey(t => t.AssigneeId)
-                .IsRequired(false)
-                .OnDelete(DeleteBehavior.SetNull);
-
             builder.Entity<Comment>()
                 .HasOne(c => c.Task)
                 .WithMany(t => t.Comments)
