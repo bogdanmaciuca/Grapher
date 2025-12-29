@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Grapher.Models;
@@ -114,9 +114,7 @@ namespace Grapher.Data
             }
         }
 
-        /// <summary>
         /// Seeds a regular Member user
-        /// </summary>
         private static async Task SeedMemberUserAsync(UserManager<ApplicationUser> userManager, string email, string firstName, string lastName, string password)
         {
             var existingUser = await userManager.FindByEmailAsync(email);
@@ -143,9 +141,7 @@ namespace Grapher.Data
             }
         }
 
-        /// <summary>
         /// Seeds user profiles for all users
-        /// </summary>
         private static async Task SeedUserProfilesAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             var users = await userManager.Users.ToListAsync();
@@ -230,9 +226,7 @@ namespace Grapher.Data
             await context.SaveChangesAsync();
         }
 
-        /// <summary>
         /// Seeds sample tasks for projects
-        /// </summary>
         private static async Task SeedSampleTasksAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             // Only seed if no tasks exist
@@ -308,9 +302,7 @@ namespace Grapher.Data
             await context.SaveChangesAsync();
         }
 
-        /// <summary>
         /// Seeds sample comments on tasks
-        /// </summary>
         private static async Task SeedSampleCommentsAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             // Only seed if no comments exist
@@ -357,9 +349,7 @@ namespace Grapher.Data
             await context.SaveChangesAsync();
         }
 
-        /// <summary>
         /// Helper to extract user info from email
-        /// </summary>
         private static (string firstName, string lastName, string jobTitle) ExtractUserInfo(string email)
         {
             var parts = email.Split('@')[0].Split('.');
@@ -371,9 +361,7 @@ namespace Grapher.Data
             return (firstName, lastName, jobTitle);
         }
 
-        /// <summary>
         /// Ensures a role exists
-        /// </summary>
         private static async Task EnsureRoleAsync(RoleManager<IdentityRole> roleManager, string roleName)
         {
             var roleExists = await roleManager.RoleExistsAsync(roleName);

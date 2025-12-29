@@ -1,8 +1,6 @@
 ﻿namespace Grapher.Configuration
 {
-    /// <summary>
-    /// Application role names. Values are bound from configuration at startup.
-    /// </summary>
+    /// Application role names; values are bound from configuration at startup
     public class AppRoles
     {
         public string AdminRole { get; set; } = "Administrator";
