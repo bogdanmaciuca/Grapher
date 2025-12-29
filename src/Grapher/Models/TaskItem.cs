@@ -26,7 +26,7 @@ namespace Grapher.Models
         [Required]
         public required string CreatorId { get; set; }
         [ForeignKey("CreatorId")]
-        public virtual ApplicationUser Creator { get; set; }
+        public virtual required ApplicationUser Creator { get; set; }
 
         public virtual ICollection<TaskAssignment> Assignments { get; set; } = new List<TaskAssignment>();
         public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();

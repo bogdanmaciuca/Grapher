@@ -1,9 +1,9 @@
-﻿@using Grapher.Models
-@inject Microsoft.AspNetCore.Identity.UserManager<ApplicationUser>
-    UserManager
+﻿@using Microsoft.AspNetCore.Identity
+@using Grapher.Models
+@inject Microsoft.AspNetCore.Identity.UserManager<Grapher.Models.ApplicationUser> UserMgr
 
-    <!DOCTYPE html>
-    <html lang="en">
+<!DOCTYPE html>
+<html lang="en">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -27,7 +27,7 @@
                         var showProjectTaskLinks = false;
                         if (User.Identity?.IsAuthenticated ?? false)
                         {
-                            var currentUser = await UserManager.GetUserAsync(User);
+                            var currentUser = await UserMgr.GetUserAsync(User);
                             showProjectTaskLinks = currentUser != null && !currentUser.IsGuest;
                         }
                         }
