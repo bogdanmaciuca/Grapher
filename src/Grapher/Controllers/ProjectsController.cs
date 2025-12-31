@@ -10,6 +10,7 @@ using Microsoft.Extensions.Options;
 using Grapher.Configuration;
 using Grapher.Data;
 using Grapher.Models;
+using Grapher.Services;
 
 namespace Grapher.Controllers
 {
@@ -18,15 +19,18 @@ namespace Grapher.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AppRoles _roles;
+        private readonly IEmailSender _emailSender;
 
         public ProjectsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IOptions<AppRoles> rolesOptions)
+            IOptions<AppRoles> rolesOptions,
+            IEmailSender emailSender)
         {
             _context = context;
             _userManager = userManager;
             _roles = rolesOptions?.Value ?? new AppRoles();
+            _emailSender = emailSender;
         }
 
         // GET: Projects - Admins see all, authenticated non-admins see only their projects
@@ -68,6 +72,7 @@ namespace Grapher.Controllers
             var project = await _context.Projects
                 .Include(p => p.Organizer)
                 .Include(p => p.Members)
+                    .ThenInclude(pm => pm.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (project == null)
@@ -85,6 +90,8 @@ namespace Grapher.Controllers
                 return Forbid();
             }
 
+            // make organizer flag available to the view
+            ViewBag.IsOrganizer = isOrganizer;
             return View(project);
         }
 
@@ -117,6 +124,12 @@ namespace Grapher.Controllers
 
             project.OrganizerId = currentUser.Id;
             ModelState.Remove("OrganizerId");
+
+            if (!project.StartDate.HasValue || project.StartDate == default)
+            {
+                project.StartDate = DateTime.UtcNow.Date;
+            }
+
             if (ModelState.IsValid)
             {
                 project.CreatedAt = DateTime.UtcNow;
@@ -165,33 +178,40 @@ namespace Grapher.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,OrganizerId")] Project project)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,OrganizerId,StartDate")] Project project)
         {
             if (id != project.Id)
             {
                 return NotFound();
             }
 
-            var currentUserId = _userManager.GetUserId(User);
+            // Load the existing tracked entity from the context
             var existingProject = await _context.Projects.FindAsync(id);
+            if (existingProject == null)
+            {
+                return NotFound();
+            }
+
+            var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole(_roles.AdminRole);
-            var isOrganizer = existingProject?.OrganizerId == currentUserId;
+            var isOrganizer = existingProject.OrganizerId == currentUserId;
 
             if (!isAdmin && !isOrganizer)
             {
                 return Forbid();
             }
 
-            if (existingProject != null)
-            {
-                project.OrganizerId = existingProject.OrganizerId;
-            }
-
+            // Update the tracked entity's mutable properties instead of attaching a second instance
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(project);
+                    existingProject.Title = project.Title;
+                    existingProject.Description = project.Description;
+                    // Allow editing StartDate (can be earlier than CreatedAt)
+                    existingProject.StartDate = project.StartDate;
+                    // keep existingProject.OrganizerId unchanged
+
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
@@ -262,6 +282,96 @@ namespace Grapher.Controllers
         private bool ProjectExists(int id)
         {
             return _context.Projects.Any(e => e.Id == id);
+        }
+        // GET: /Projects/SearchUsers?q=term
+        [HttpGet]
+        public async Task<IActionResult> SearchUsers(string q)
+        {
+            if (string.IsNullOrWhiteSpace(q))
+            {
+                return Json(Array.Empty<string>());
+            }
+
+            // limit results; do not leak other user info
+            var matches = await _userManager.Users
+                .Where(u => u.Email.Contains(q))
+                .OrderBy(u => u.Email)
+                .Select(u => u.Email)
+                .Take(10)
+                .ToListAsync();
+
+            return Json(matches);
+        }
+
+        // POST: /Projects/Invite
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> Invite(int projectId, string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest("Email required");
+            }
+
+            var project = await _context.Projects
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null) return NotFound();
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null || project.OrganizerId != currentUser.Id)
+            {
+                return Forbid();
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                TempData["InviteError"] = "No user found with that email.";
+                return RedirectToAction(nameof(Details), new { id = projectId });
+            }
+
+            if (user.Id == project.OrganizerId)
+            {
+                TempData["InviteError"] = "Cannot invite project organizer.";
+                return RedirectToAction(nameof(Details), new { id = projectId });
+            }
+
+            if (project.Members.Any(m => m.UserId == user.Id))
+            {
+                TempData["InviteError"] = "User is already a project member.";
+                return RedirectToAction(nameof(Details), new { id = projectId });
+            }
+
+            var member = new ProjectMember
+            {
+                ProjectId = projectId,
+                UserId = user.Id,
+                Role = "Member",
+                JoinedAt = DateTime.UtcNow
+            };
+
+            _context.ProjectMembers.Add(member);
+            await _context.SaveChangesAsync();
+
+            // Optional: send minimal email (IEmailSender must be registered)
+            try
+            {
+                var acceptUrl = Url.Action("Details", "Projects", new { id = projectId }, Request.Scheme);
+                var subject = $"You were added to project \"{project.Title}\"";
+                var body = $"You have been added to project \"{project.Title}\". View it here: {acceptUrl}";
+                // IEmailSender should be injected into controller (add via ctor)
+                await _emailSender.SendEmailAsync(email, subject, body);
+                TempData["InviteSuccess"] = "Member added.";
+            }
+            catch
+            {
+                TempData["InviteSuccess"] = "Member added; sending email failed.";
+            }
+
+            return RedirectToAction(nameof(Details), new { id = projectId });
         }
     }
 }

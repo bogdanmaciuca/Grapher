@@ -17,6 +17,9 @@ namespace Grapher.Models
 
         public DateTime CreatedAt { get; set; }
 
+        // Optional start date (user may supply this)
+        public DateTime? StartDate { get; set; }
+
         [Required]
         public required string OrganizerId { get; set; }
 

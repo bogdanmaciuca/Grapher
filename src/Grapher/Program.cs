@@ -37,7 +37,11 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.AddRazorPages();
 
-builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, EmailSender>();
+// Register SMTP configuration and email sender
+builder.Services.Configure<Grapher.Services.SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+builder.Services.AddTransient<Grapher.Services.IEmailSender, Grapher.Services.SmtpEmailSender>();
+// Register adapter that delegates to Grapher.Services.IEmailSender
+builder.Services.AddTransient<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, Grapher.Services.IdentityEmailSender>();
 
 var app = builder.Build();
 

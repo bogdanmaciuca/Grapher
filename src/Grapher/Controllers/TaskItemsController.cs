@@ -147,6 +147,11 @@ namespace Grapher.Controllers
                 return Forbid();
             }
 
+            taskItem.CreatorId = currentUser.Id;
+            ModelState.Remove(nameof(TaskItem.Creator));
+            ModelState.Remove(nameof(TaskItem.CreatorId));
+
+
             if (ModelState.IsValid)
             {
                 taskItem.CreatorId = currentUser.Id;
@@ -237,6 +242,12 @@ namespace Grapher.Controllers
                 return Forbid();
             }
 
+            // Ensure required server-only fields are present for model validation.
+            // The binder doesn't supply Creator/CreatorId, so populate/remove ModelState entries before checking validity.
+            taskItem.CreatorId = existingTask.CreatorId;
+            ModelState.Remove(nameof(TaskItem.Creator));
+            ModelState.Remove(nameof(TaskItem.CreatorId));
+
             if (ModelState.IsValid)
             {
                 try
@@ -257,6 +268,7 @@ namespace Grapher.Controllers
                         }
                     }
 
+                    // existingTask is already tracked; no need to call Update but it's harmless.
                     _context.Update(existingTask);
                     await _context.SaveChangesAsync();
                 }
@@ -274,6 +286,7 @@ namespace Grapher.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // If we get here ModelState was invalid — re-populate selects and show the form with the submitted values.
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title", taskItem.ProjectId);
             ViewData["Users"] = new MultiSelectList(_context.Users, "Id", "UserName", selectedUsers);
             return View(taskItem);

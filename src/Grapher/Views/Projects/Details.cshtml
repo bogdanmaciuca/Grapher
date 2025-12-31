@@ -1,103 +1,123 @@
 @model Grapher.Models.Project
 
 @{
-ViewData["Title"] = "Project Board";
+    ViewData["Title"] = "Project Details";
+}
+
+@{
+    var inviteSuccess = TempData["InviteSuccess"] as string;
+    var inviteError = TempData["InviteError"] as string;
+}
+@if (!string.IsNullOrEmpty(inviteSuccess))
+{
+<div class="alert alert-success">@inviteSuccess</div>
+}
+@if (!string.IsNullOrEmpty(inviteError))
+{
+<div class="alert alert-danger">@inviteError</div>
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold text-dark">@Model.Title</h2>
-        <p class="text-muted mb-1">@Model.Description</p>
-        <span class="badge bg-light text-dark border">Organizer: @(Model.Organizer?.UserName ?? "Unknown")</span>
+        <p class="text-muted mb-0">Organizer: @Model.Organizer?.UserName</p>
+        @if (Model.StartDate.HasValue)
+        {
+        <small class="text-muted">Start: @Model.StartDate.Value.ToString("MMMM dd, yyyy")</small>
+        }
     </div>
+
     <div class="d-flex gap-2">
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-3">Edit Project</a>
-        <a asp-controller="TaskItems" asp-action="Create" asp-route-projectId="@Model.Id" class="btn btn-primary rounded-pill px-4">+ New Task</a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-4">Edit</a>
+        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Back to List</a>
     </div>
 </div>
-
-<hr />
 
 <div class="row">
-
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px; background-color: #f8f9fa;">
-            <div class="card-header text-center fw-bold text-secondary bg-transparent border-0">To Do</div>
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
             <div class="card-body">
-                @foreach (var task in Model.Tasks.Where(t => t.Status == Grapher.Models.TaskStatus.NotStarted))
-                {
-                <div class="card mb-2 shadow-sm">
-                    <div class="card-body p-3">
-                        <h6 class="card-title mb-1"><a asp-controller="TaskItems" asp-action="Details" asp-route-id="@task.Id" class="text-decoration-none text-dark stretched-link">@task.Title</a></h6>
-                        <p class="card-text small text-muted">@($"{task.EndDate:MMM dd}")</p>
-                    </div>
+                <h5 class="fw-bold">Description</h5>
+                <p class="text-muted">@Model.Description</p>
+
+                <hr />
+
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 fw-bold">Members</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.Members != null && Model.Members.Any())
+                        {
+                        <div class="d-flex flex-wrap gap-1">
+                            @foreach (var m in Model.Members)
+                                {
+                            <span class="badge bg-light text-dark border">@m.User?.UserName ?? m.UserId</span>
+                                }
+                        </div>
+                        }
+                        else
+                        {
+                        <span class="text-muted">No members yet</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-4 fw-bold">AI Summary</dt>
+                    <dd class="col-sm-8">
+                        @if (Model.AiSummary?.SummaryText != null)
+                        {
+                        @Model.AiSummary.SummaryText
+                        }
+                        else
+                        {
+                        <span class="text-muted">No summary available</span>
+                        }
+                    </dd>
+                </dl>
+            </div>
+
+            <div class="card-footer bg-white border-0">
+                <div class="d-flex justify-content-end">
+                    @if ((ViewBag.IsOrganizer ?? false) == true)
+                    {
+                    <button id="openInviteBtn" class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#inviteModal">Invite Member</button>
+                    }
                 </div>
-                }
             </div>
         </div>
-    </div>
 
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px; background-color: #f8f9fa;">
-            <div class="card-header text-center fw-bold text-primary bg-transparent border-0">In Progress</div>
-            <div class="card-body">
-                @foreach (var task in Model.Tasks.Where(t => t.Status == Grapher.Models.TaskStatus.InProgress))
-                {
-                <div class="card mb-2 shadow-sm border-primary">
-                    <div class="card-body p-3">
-                        <h6 class="card-title mb-1"><a asp-controller="TaskItems" asp-action="Details" asp-route-id="@task.Id" class="text-decoration-none text-dark stretched-link">@task.Title</a></h6>
-                        <p class="card-text small text-muted">@($"{task.EndDate:MMM dd}")</p>
-                    </div>
-                </div>
-                }
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px; background-color: #f8f9fa;">
-            <div class="card-header text-center fw-bold text-success bg-transparent border-0">Done</div>
-            <div class="card-body">
-                @foreach (var task in Model.Tasks.Where(t => t.Status == Grapher.Models.TaskStatus.Completed))
-                {
-                <div class="card mb-2 shadow-sm opacity-75">
-                    <div class="card-body p-3">
-                        <h6 class="card-title text-decoration-line-through text-muted mb-1">@task.Title</h6>
-                        <p class="card-text small text-muted">Finished</p>
-                    </div>
-                </div>
-                }
-            </div>
-        </div>
-    </div>
-
-</div>
-
-<div class="card border-0 shadow-sm mt-4 mb-4" style="border-radius: 12px;">
-    <div class="card-header bg-white fw-bold border-0 pt-3 ps-3">Task Dependency Tree (Preview)</div>
-    <div class="card-body text-center">
-        <div class="mermaid">
-            graph TD;
-            A[Init Project] --> B(Database Design);
-            B --> C{Approval};
-            C -->|Yes| D[Backend Dev];
-            C -->|No| B;
-            D --> E[Frontend Dev];
-            E --> F[Deploy];
-
-            style A fill:#f9f,stroke:#333,stroke-width:2px
-            style F fill:#ccf,stroke:#333,stroke-width:2px
-        </div>
+        <!-- project tasks preview or other content could go here -->
     </div>
 </div>
 
-<div class="mt-4">
-    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Back to Projects List</a>
+<!-- Invite Modal -->
+<div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="inviteForm" method="post" action="@Url.Action("Invite", "Projects")" class="modal-content">
+            @Html.AntiForgeryToken()
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteModalLabel">Invite Member to Project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body position-relative">
+                <input type="hidden" name="projectId" value="@Model.Id" />
+                <div class="mb-3 position-relative">
+                    <label for="inviteEmail" class="form-label">Search user by email</label>
+                    <input id="inviteEmail" name="email" class="form-control" autocomplete="off" />
+                    <div id="inviteSuggestions" class="list-group position-absolute w-100" style="z-index:1050;"></div>
+                    <div class="form-text">Type an email or select from suggestions (suggestions limited).</div>
+                </div>
+
+                <div id="inviteAlert" class="alert d-none" role="alert"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Invite</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </form>
+    </div>
 </div>
 
 @section Scripts {
-<script type="module">
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-mermaid.initialize({ startOnLoad: true });
-</script>
+    <script src="~/js/project-invite.js"></script>
 }

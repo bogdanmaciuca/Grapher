@@ -254,7 +254,8 @@ namespace Grapher.Data
                     Status = Models.TaskStatus.InProgress,
                     StartDate = referenceDate.AddDays(-25),
                     EndDate = referenceDate.AddDays(5),
-                    CreatorId = adminUser.Id
+                    CreatorId = adminUser.Id,
+                    Creator = adminUser
                 },
                 new TaskItem
                 {
@@ -264,7 +265,8 @@ namespace Grapher.Data
                     Status = Models.TaskStatus.NotStarted,
                     StartDate = referenceDate.AddDays(-20),
                     EndDate = referenceDate.AddDays(10),
-                    CreatorId = adminUser.Id
+                    CreatorId = adminUser.Id,
+                    Creator = adminUser
                 },
                 new TaskItem
                 {
@@ -274,7 +276,8 @@ namespace Grapher.Data
                     Status = Models.TaskStatus.InProgress,
                     StartDate = referenceDate.AddDays(-18),
                     EndDate = referenceDate.AddDays(3),
-                    CreatorId = adminUser.Id
+                    CreatorId = adminUser.Id,
+                    Creator = adminUser
                 },
                 new TaskItem
                 {
@@ -284,7 +287,8 @@ namespace Grapher.Data
                     Status = Models.TaskStatus.Completed,
                     StartDate = referenceDate.AddDays(-15),
                     EndDate = referenceDate.AddDays(-5),
-                    CreatorId = adminUser.Id
+                    CreatorId = adminUser.Id,
+                    Creator = adminUser
                 },
                 new TaskItem
                 {
@@ -294,7 +298,8 @@ namespace Grapher.Data
                     Status = Models.TaskStatus.InProgress,
                     StartDate = referenceDate.AddDays(-12),
                     EndDate = referenceDate.AddDays(8),
-                    CreatorId = adminUser.Id
+                    CreatorId = adminUser.Id,
+                    Creator = adminUser
                 }
             };
 
