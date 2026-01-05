@@ -11,6 +11,7 @@ using Grapher.Configuration;
 using Grapher.Data;
 using Grapher.Models;
 using Grapher.Services;
+using Microsoft.AspNetCore.SignalR;
 
 namespace Grapher.Controllers
 {
@@ -20,17 +21,20 @@ namespace Grapher.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AppRoles _roles;
         private readonly IEmailSender _emailSender;
+        private readonly ILogger<ProjectsController> _logger;
 
         public ProjectsController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IOptions<AppRoles> rolesOptions,
-            IEmailSender emailSender)
+            IEmailSender emailSender,
+            ILogger<ProjectsController> logger)
         {
             _context = context;
             _userManager = userManager;
             _roles = rolesOptions?.Value ?? new AppRoles();
             _emailSender = emailSender;
+            _logger = logger;
         }
 
         // GET: Projects - Admins see all, authenticated non-admins see only their projects
@@ -73,6 +77,7 @@ namespace Grapher.Controllers
                 .Include(p => p.Organizer)
                 .Include(p => p.Members)
                     .ThenInclude(pm => pm.User)
+                .Include(p => p.AiSummary)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (project == null)
@@ -114,7 +119,7 @@ namespace Grapher.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
-        public async Task<IActionResult> Create([Bind("Title,Description")] Project project)
+        public async Task<IActionResult> Create([Bind("Title,Description,StartDate")] Project project)
         {
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser == null || currentUser.IsGuest)
@@ -135,6 +140,23 @@ namespace Grapher.Controllers
                 project.CreatedAt = DateTime.UtcNow;
                 _context.Add(project);
                 await _context.SaveChangesAsync();
+
+                /// Ensure the organizer is recorded as a project member with role "Organizer"
+                /// Use composite key find to avoid duplicates for existing data
+                var existingOrganizer = await _context.ProjectMembers.FindAsync(new object[] { project.Id, project.OrganizerId });
+                if (existingOrganizer == null)
+                {
+                    var organizerMember = new ProjectMember
+                    {
+                        ProjectId = project.Id,
+                        UserId = project.OrganizerId,
+                        Role = "Organizer",
+                        JoinedAt = project.CreatedAt
+                    };
+                    _context.ProjectMembers.Add(organizerMember);
+                    await _context.SaveChangesAsync();
+                }
+
                 return RedirectToAction(nameof(Index));
             }
 
@@ -178,13 +200,8 @@ namespace Grapher.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Title,Description,OrganizerId,StartDate")] Project project)
+        public async Task<IActionResult> Edit(int id)
         {
-            if (id != project.Id)
-            {
-                return NotFound();
-            }
-
             // Load the existing tracked entity from the context
             var existingProject = await _context.Projects.FindAsync(id);
             if (existingProject == null)
@@ -201,22 +218,20 @@ namespace Grapher.Controllers
                 return Forbid();
             }
 
-            // Update the tracked entity's mutable properties instead of attaching a second instance
-            if (ModelState.IsValid)
+            // Bind only the editable properties from the form onto the tracked entity
+            if (await TryUpdateModelAsync(existingProject, "",
+                p => p.Title,
+                p => p.Description,
+                p => p.StartDate))
             {
                 try
                 {
-                    existingProject.Title = project.Title;
-                    existingProject.Description = project.Description;
-                    // Allow editing StartDate (can be earlier than CreatedAt)
-                    existingProject.StartDate = project.StartDate;
-                    // keep existingProject.OrganizerId unchanged
-
                     await _context.SaveChangesAsync();
+                    return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!ProjectExists(project.Id))
+                    if (!ProjectExists(existingProject.Id))
                     {
                         return NotFound();
                     }
@@ -225,10 +240,10 @@ namespace Grapher.Controllers
                         throw;
                     }
                 }
-                return RedirectToAction(nameof(Index));
             }
 
-            return View(project);
+            // If binding/validation failed, render view with the tracked entity (includes validation errors)
+            return View(existingProject);
         }
 
         // GET: Projects/Delete/5 - Only organizer or Admin can delete
@@ -283,6 +298,7 @@ namespace Grapher.Controllers
         {
             return _context.Projects.Any(e => e.Id == id);
         }
+
         // GET: /Projects/SearchUsers?q=term
         [HttpGet]
         public async Task<IActionResult> SearchUsers(string q)
@@ -356,13 +372,12 @@ namespace Grapher.Controllers
             _context.ProjectMembers.Add(member);
             await _context.SaveChangesAsync();
 
-            // Optional: send minimal email (IEmailSender must be registered)
+            // Send minimal email (IEmailSender must be registered)
             try
             {
                 var acceptUrl = Url.Action("Details", "Projects", new { id = projectId }, Request.Scheme);
                 var subject = $"You were added to project \"{project.Title}\"";
                 var body = $"You have been added to project \"{project.Title}\". View it here: {acceptUrl}";
-                // IEmailSender should be injected into controller (add via ctor)
                 await _emailSender.SendEmailAsync(email, subject, body);
                 TempData["InviteSuccess"] = "Member added.";
             }
@@ -372,6 +387,91 @@ namespace Grapher.Controllers
             }
 
             return RedirectToAction(nameof(Details), new { id = projectId });
+        }
+
+        // GET: Projects/ManageMembers/5
+        [Authorize]
+        public async Task<IActionResult> ManageMembers(int? id)
+        {
+            if (id == null) return NotFound();
+
+            var project = await _context.Projects
+                .Include(p => p.Organizer)
+                .Include(p => p.Members)
+                    .ThenInclude(pm => pm.User)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (project == null) return NotFound();
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null || project.OrganizerId != currentUser.Id)
+            {
+                return Forbid();
+            }
+
+            return View(project);
+        }
+
+        // POST: Projects/RemoveMember
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> RemoveMember(int projectId, string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId)) return BadRequest();
+
+            // basic input validation
+            if (userId.Length > 256) return BadRequest();
+
+            var project = await _context.Projects
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null) return NotFound();
+
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null || project.OrganizerId != currentUser.Id)
+            {
+                _logger.LogWarning("Unauthorized RemoveMember attempt by {UserId} on project {ProjectId}", currentUser?.Id, projectId);
+                return Forbid();
+            }
+
+            // Prevent removing organizer
+            if (userId == project.OrganizerId)
+            {
+                TempData["MemberError"] = "Cannot remove the organizer.";
+                return RedirectToAction(nameof(ManageMembers), new { id = projectId });
+            }
+
+            var member = await _context.ProjectMembers.FindAsync(new object[] { projectId, userId });
+            if (member == null)
+            {
+                TempData["MemberError"] = "Member not found.";
+                return RedirectToAction(nameof(ManageMembers), new { id = projectId });
+            }
+
+            // Use transaction for safety
+            using var tx = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                _context.ProjectMembers.Remove(member);
+                await _context.SaveChangesAsync();
+
+                // Optional: record audit/log entry
+                _logger.LogInformation("Project member removed: ProjectId={ProjectId}, RemovedUserId={RemovedUserId}, ByUserId={ByUserId}",
+                    projectId, userId, currentUser.Id);
+
+                await tx.CommitAsync();
+                TempData["MemberSuccess"] = "Member removed.";
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                _logger.LogError(ex, "Failed to remove member {UserId} from project {ProjectId}", userId, projectId);
+                TempData["MemberError"] = "Failed to remove member.";
+            }
+
+            return RedirectToAction(nameof(ManageMembers), new { id = projectId });
         }
     }
 }

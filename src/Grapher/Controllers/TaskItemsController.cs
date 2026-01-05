@@ -29,7 +29,6 @@ namespace Grapher.Controllers
             _context = context;
             _userManager = userManager;
             _roles = rolesOptions?.Value ?? new AppRoles();
-
         }
 
         // GET: TaskItems
@@ -88,6 +87,7 @@ namespace Grapher.Controllers
                 .Include(t => t.Assignments)
                     .ThenInclude(a => a.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
+
             if (taskItem == null)
             {
                 return NotFound();
@@ -95,6 +95,7 @@ namespace Grapher.Controllers
 
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole(_roles.AdminRole);
+
             var isCreator = !string.IsNullOrEmpty(currentUserId) && taskItem.CreatorId == currentUserId;
             var isProjectOrganizer = !string.IsNullOrEmpty(currentUserId) && taskItem.Project != null && taskItem.Project.OrganizerId == currentUserId;
             var isAssigned = !string.IsNullOrEmpty(currentUserId) && taskItem.Assignments.Any(a => a.UserId == currentUserId);
@@ -150,7 +151,6 @@ namespace Grapher.Controllers
             taskItem.CreatorId = currentUser.Id;
             ModelState.Remove(nameof(TaskItem.Creator));
             ModelState.Remove(nameof(TaskItem.CreatorId));
-
 
             if (ModelState.IsValid)
             {

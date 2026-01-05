@@ -28,6 +28,11 @@
     </div>
 
     <div class="d-flex gap-2">
+        <a asp-action="ManageMembers" asp-route-id="@Model.Id" class="btn btn-outline-primary rounded-pill px-4">Manage Members</a>
+        @if ((ViewBag.IsOrganizer ?? false) == true)
+        {
+            <button id="openInviteBtn" class="btn btn-outline-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#inviteModal">Invite Member</button>
+        }
         <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-4">Edit</a>
         <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Back to List</a>
     </div>
@@ -76,10 +81,7 @@
 
             <div class="card-footer bg-white border-0">
                 <div class="d-flex justify-content-end">
-                    @if ((ViewBag.IsOrganizer ?? false) == true)
-                    {
-                    <button id="openInviteBtn" class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#inviteModal">Invite Member</button>
-                    }
+
                 </div>
             </div>
         </div>
@@ -108,11 +110,6 @@
                 </div>
 
                 <div id="inviteAlert" class="alert d-none" role="alert"></div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Invite</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </form>
     </div>

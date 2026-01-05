@@ -1,0 +1,95 @@
+@model Grapher.Models.Project
+
+@{
+    ViewData["Title"] = "Manage Members";
+    var success = TempData["MemberSuccess"] as string;
+    var error = TempData["MemberError"] as string;
+    var organizerInMembers = Model.Members?.Any(m => m.UserId == Model.OrganizerId) ?? false;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark">@ViewData["Title"] - @Model.Title</h2>
+    <div class="d-flex gap-2">
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-4">Back to Project</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(success))
+{
+<div class="alert alert-success">@success</div>
+}
+@if (!string.IsNullOrEmpty(error))
+{
+<div class="alert alert-danger">@error</div>
+}
+
+<div class="card border-0 shadow-sm" style="border-radius:12px;">
+    <div class="card-body">
+        <h5 class="mb-3">Members</h5>
+
+        @if ((Model.Members != null && Model.Members.Any()) || !organizerInMembers)
+        {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Joined At</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @* Show organizer row first if it's not present in Model.Members *@
+                    @if (!organizerInMembers)
+                        {
+                    <tr>
+                        <td>
+                            <strong>@(Model.Organizer?.UserName ?? Model.OrganizerId)</strong><br />
+                            <small class="text-muted">@Model.Organizer?.Email</small>
+                        </td>
+                        <td>Organizer</td>
+                        <td>@Model.CreatedAt.ToString("yyyy-MM-dd")</td>
+                        <td class="text-end">
+                            <span class="badge bg-light text-dark border">Organizer</span>
+                        </td>
+                    </tr>
+                        }
+
+                    @* Render members excluding organizer to avoid duplicate row *@
+                    @foreach (var m in (Model.Members ?? Enumerable.Empty<Grapher.Models.ProjectMember>()).Where(x => x.UserId != Model.OrganizerId))
+                        {
+                    <tr>
+                        <td>
+                            <strong>@(m.User?.UserName ?? m.UserId)</strong><br />
+                            <small class="text-muted">@m.User?.Email</small>
+                        </td>
+                        <td>@m.Role</td>
+                        <td>@(m.JoinedAt == default ? "<span class=\"text-muted\">Unknown</span>" : m.JoinedAt.ToString("yyyy-MM-dd"))</td>
+                        <td class="text-end">
+                            @if (m.UserId != Model.OrganizerId)
+                                    {
+                            <form asp-action="RemoveMember" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="projectId" value="@Model.Id" />
+                                <input type="hidden" name="userId" value="@m.UserId" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this member?');">Remove</button>
+                            </form>
+                                    }
+                                    else
+                                    {
+                            <span class="badge bg-light text-dark border">Organizer</span>
+                                    }
+                        </td>
+                    </tr>
+                        }
+                </tbody>
+            </table>
+        </div>
+        }
+        else
+        {
+        <div class="text-muted">No members yet.</div>
+        }
+    </div>
+</div>
