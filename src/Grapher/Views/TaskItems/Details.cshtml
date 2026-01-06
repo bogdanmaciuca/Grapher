@@ -1,7 +1,20 @@
 @model Grapher.Models.TaskItem
+@using System.Security.Claims
+@using System.Text.RegularExpressions
 
 @{
     ViewData["Title"] = "Task Details";
+    var attachSuccess = TempData["AttachmentSuccess"] as string;
+    var attachError = TempData["AttachmentError"] as string;
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var isAdmin = User.IsInRole("Administrator");
+    var isCreator = Model.CreatorId == currentUserId;
+    var isProjectOrganizer = Model.Project != null && Model.Project.OrganizerId == currentUserId;
+    var canManageAttachments = isAdmin || isCreator || isProjectOrganizer;
+
+    // helpers for provider detection
+    Regex ytRegex = new(@"(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([A-Za-z0-9_\-]{11})", RegexOptions.IgnoreCase);
+    Regex vimeoRegex = new(@"vimeo\.com\/(?:.*#|.*/videos/)?([0-9]+)", RegexOptions.IgnoreCase);
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -12,19 +25,17 @@
     </div>
 </div>
 
-<div class="row">
+<div class="row mb-4">
     <div class="col-md-8">
-        <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+        <div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
             <div class="card-body">
-                <dl class="row mb-0">
+                <h5 class="fw-bold">Details</h5>
+                <dl class="row">
                     <dt class="col-sm-4 fw-bold">Project</dt>
-                    <dd class="col-sm-8">@((Model.Project != null) ? Model.Project.Title : "N/A")</dd>
+                    <dd class="col-sm-8">@Model.Project.Title</dd>
 
                     <dt class="col-sm-4 fw-bold">Created By</dt>
-                    <dd class="col-sm-8">@Model.Creator?.UserName ?? "Unknown"</dd>
-
-                    <dt class="col-sm-4 fw-bold">Title</dt>
-                    <dd class="col-sm-8">@Model.Title</dd>
+                    <dd class="col-sm-8">@Model.Creator.UserName</dd>
 
                     <dt class="col-sm-4 fw-bold">Description</dt>
                     <dd class="col-sm-8">@(!string.IsNullOrWhiteSpace(Model.Description) ? Model.Description : "<span class=\"text-muted\">None</span>")</dd>
@@ -58,7 +69,7 @@
                         }
                     </dd>
 
-                    <dt class="col-sm-4 fw-bold">Assigned To</dt>
+                    <dt class="col-sm-4 fw-bold align-self-start">Assigned To</dt>
                     <dd class="col-sm-8">
                         @if (Model.Assignments != null && Model.Assignments.Any())
                         {
@@ -75,6 +86,107 @@
                         }
                     </dd>
                 </dl>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
+            <div class="card-body">
+                <h5 class="fw-bold">Attachments</h5>
+
+                @if (Model.Attachments != null && Model.Attachments.Any())
+                {
+                <div class="row g-3">
+                    @foreach (var a in Model.Attachments)
+                        {
+                    <div class="col-12">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="max-width:640px; width:100%;">
+                                @if (!string.Equals(a.Type, "link", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                <img src="@a.Url" class="img-fluid rounded" alt="attachment" style="max-width:100%; max-height:480px; object-fit:cover;" />
+                                        }
+                                        else
+                                        {
+                                            var url = a.Url ?? "";
+                                            var ytMatch = ytRegex.Match(url);
+                                            var vimeoMatch = vimeoRegex.Match(url);
+
+                                            if (ytMatch.Success)
+                                            {
+                                                var ytId = ytMatch.Groups[1].Value;
+                                                var embed = $"https://www.youtube-nocookie.com/embed/{ytId}?rel=0";
+                                <div class="ratio ratio-16x9 mb-2">
+                                    <iframe src="@embed" title="YouTube video" allowfullscreen loading="lazy" frameborder="0"></iframe>
+                                </div>
+                                            }
+                                            else if (vimeoMatch.Success)
+                                            {
+                                                var vId = vimeoMatch.Groups[1].Value;
+                                                var embed = $"https://player.vimeo.com/video/{vId}";
+                                <div class="ratio ratio-16x9 mb-2">
+                                    <iframe src="@embed" title="Vimeo video" allowfullscreen loading="lazy" frameborder="0"></iframe>
+                                </div>
+                                            }
+                                            else
+                                            {
+                                <a href="@a.Url" target="_blank" rel="noopener noreferrer">@a.Url</a>
+                                            }
+                                        }
+                            </div>
+
+                            <div class="flex-grow-1">
+                                <div>
+                                    <strong>@(string.Equals(a.Type, "link", StringComparison.OrdinalIgnoreCase) ? "Link" : (a.Type?.ToUpperInvariant() ?? "FILE"))</strong>
+                                </div>
+
+                                <div class="mt-2">
+                                    @if (canManageAttachments)
+                                    {
+                                    <form asp-action="RemoveAttachment" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@a.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this attachment?');">Remove</button>
+                                    </form>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        <hr />
+                    </div>
+                        }
+                </div>
+                }
+                else
+                {
+                <div class="text-muted">No attachments yet.</div>
+                }
+
+                @if (canManageAttachments)
+                {
+                <hr />
+                <h6 class="mt-3">Add attachment</h6>
+
+                <form asp-action="UploadAttachment" method="post" enctype="multipart/form-data" class="mb-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="taskId" value="@Model.Id" />
+                    <div class="mb-2">
+                        <input type="file" name="file" accept=".png,.jpg,.jpeg,.svg,image/*" class="form-control" />
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary">Upload Image</button>
+                    </div>
+                    <div class="form-text text-muted">Allowed: png, jpg, jpeg, svg. Max size capped server-side.</div>
+                </form>
+
+                <form asp-action="AddAttachmentUrl" method="post" class="mb-0">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="taskId" value="@Model.Id" />
+                    <div class="input-group">
+                        <input type="url" name="url" class="form-control" placeholder="Paste a link (YouTube, Vimeo, etc.)" />
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Add Link</button>
+                    </div>
+                </form>
+                }
             </div>
         </div>
     </div>
