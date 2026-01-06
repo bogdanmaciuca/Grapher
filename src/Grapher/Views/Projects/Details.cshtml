@@ -34,6 +34,12 @@
             <button id="openInviteBtn" class="btn btn-outline-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#inviteModal">Invite Member</button>
             <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-4">Edit</a>
         }
+        @if ((ViewBag.IsMember ?? false) == true && (ViewBag.IsOrganizer ?? false) == false)
+        {
+            <form asp-action="Leave" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to leave this project?');">
+                <button type="submit" class="btn btn-outline-danger rounded-pill px-4">Leave Project</button>
+            </form>
+        }
         <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Back to List</a>
     </div>
 </div>

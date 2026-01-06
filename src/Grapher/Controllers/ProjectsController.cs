@@ -97,6 +97,7 @@ namespace Grapher.Controllers
 
             // make organizer flag available to the view
             ViewBag.IsOrganizer = isOrganizer;
+            ViewBag.IsMember = isMember;
             return View(project);
         }
 
@@ -472,6 +473,43 @@ namespace Grapher.Controllers
             }
 
             return RedirectToAction(nameof(ManageMembers), new { id = projectId });
+        }
+
+        // Leave from project
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> Leave(int id)
+        {
+            var userId = _userManager.GetUserId(User);
+            if (userId == null)
+            {
+                return Forbid();
+            }
+
+            var project = await _context.Projects.FindAsync(id);
+            if (project == null)
+            {
+                return NotFound();
+            }
+
+            // Safety Check: Organizers cannot leave their own project
+            if (project.OrganizerId == userId)
+            {
+                TempData["Error"] = "You cannot leave a project you own. Delete it instead.";
+                return RedirectToAction(nameof(Details), new { id = id });
+            }
+
+            // Find the membership record
+            var memberRecord = await _context.ProjectMembers.FindAsync(id, userId);
+
+            if (memberRecord != null)
+            {
+                _context.ProjectMembers.Remove(memberRecord);
+                await _context.SaveChangesAsync();
+            }
+
+            return RedirectToAction(nameof(Index));
         }
     }
 }
