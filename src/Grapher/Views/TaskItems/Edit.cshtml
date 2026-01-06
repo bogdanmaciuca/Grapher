@@ -1,58 +1,131 @@
 @model Grapher.Models.TaskItem
+@using System.Security.Claims
 
-    @{
+@{
     ViewData["Title"] = "Edit Task";
-    }
+    var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var isAdmin = User.IsInRole("Administrator");
+    var isCreator = Model.CreatorId == currentUserId;
+    var isProjectOrganizer = Model.Project != null && Model.Project.OrganizerId == currentUserId;
+    var canManageAttachments = isAdmin || isCreator || isProjectOrganizer;
+    var attachSuccess = TempData["AttachmentSuccess"] as string;
+    var attachError = TempData["AttachmentError"] as string;
+}
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="fw-bold text-dark">@ViewData["Title"]</h2>
-        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Back to List</a>
-    </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="fw-bold text-dark">@ViewData["Title"]</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Back to List</a>
+</div>
 
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card border-0 shadow-sm" style="border-radius: 12px;">
-                <div class="card-body">
-                    <form asp-action="Edit">
-                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                        <input type="hidden" asp-for="Id" />
-                        <div class="mb-3">
-                            <label asp-for="ProjectId" class="form-label fw-bold"></label>
-                            <select asp-for="ProjectId" class="form-control" asp-items="ViewBag.ProjectId"></select>
-                            <span asp-validation-for="ProjectId" class="text-danger"></span>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+            <div class="card-body">
+                <form asp-action="Edit">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="Id" />
+                    <div class="mb-3">
+                        <label asp-for="ProjectId" class="form-label fw-bold"></label>
+                        <select asp-for="ProjectId" class="form-control" asp-items="ViewBag.ProjectId"></select>
+                        <span asp-validation-for="ProjectId" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label fw-bold"></label>
+                        <input asp-for="Title" class="form-control" />
+                        <span asp-validation-for="Title" class="text-danger"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label fw-bold"></label>
+                        <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="Status" class="form-label fw-bold"></label>
+                            <select asp-for="Status" class="form-control" asp-items="Html.GetEnumSelectList<Grapher.Models.TaskStatus>()">
+                            </select>
+                            <span asp-validation-for="Status" class="text-danger"></span>
                         </div>
-                        <div class="mb-3">
-                            <label asp-for="Title" class="form-label fw-bold"></label>
-                            <input asp-for="Title" class="form-control" />
-                            <span asp-validation-for="Title" class="text-danger"></span>
+                        <div class="col-md-6 mb-3">
+                            <label asp-for="EndDate" class="form-label fw-bold"></label>
+                            <input asp-for="EndDate" class="form-control" />
+                            <span asp-validation-for="EndDate" class="text-danger"></span>
                         </div>
-                        <div class="mb-3">
-                            <label asp-for="Description" class="form-label fw-bold"></label>
-                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
-                            <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <input type="submit" value="Save" class="btn btn-primary rounded-pill px-5" />
+                    </div>
+                </form>
+                <hr />
+
+                @if (!string.IsNullOrEmpty(attachSuccess))
+                {
+                <div class="alert alert-success">@attachSuccess</div>
+                }
+                @if (!string.IsNullOrEmpty(attachError))
+                {
+                <div class="alert alert-danger">@attachError</div>
+                }
+
+                @if (Model.Attachments != null && Model.Attachments.Any())
+                {
+                <ul class="list-group mb-3">
+                    @foreach (var a in Model.Attachments)
+                        {
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            @if (a.Type != "link")
+                                    {
+                            <img src="@a.Url" alt="att" style="height:48px; width:auto; margin-right:8px;" />
+                                    }
+                            <span class="fw-semibold">@((a.Type == "link") ? "Link" : a.Type?.ToUpperInvariant())</span>
+                            <div class="small text-muted">@a.Url</div>
                         </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Status" class="form-label fw-bold"></label>
-                                <select asp-for="Status" class="form-control" asp-items="Html.GetEnumSelectList<Grapher.Models.TaskStatus>()">
-                                </select>
-                                <span asp-validation-for="Status" class="text-danger"></span>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="EndDate" class="form-label fw-bold"></label>
-                                <input asp-for="EndDate" class="form-control" />
-                                <span asp-validation-for="EndDate" class="text-danger"></span>
-                            </div>
+
+                        <div>
+                            @if (canManageAttachments)
+                                    {
+                            <form asp-action="RemoveAttachment" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@a.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this attachment?');">Remove</button>
+                            </form>
+                                    }
                         </div>
-                        <div class="d-flex justify-content-end">
-                            <input type="submit" value="Save" class="btn btn-primary rounded-pill px-5" />
-                        </div>
-                    </form>
-                </div>
+                    </li>
+                        }
+                </ul>
+                }
+                else
+                {
+                <div class="text-muted mb-3">No attachments yet.</div>
+                }
+
+                @if (canManageAttachments)
+                {
+                <form asp-action="UploadAttachment" method="post" enctype="multipart/form-data" class="mb-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="taskId" value="@Model.Id" />
+                    <div class="mb-2">
+                        <input type="file" name="file" accept=".png,.jpg,.jpeg,.svg,image/*" class="form-control" />
+                    </div>
+                    <button class="btn btn-sm btn-primary">Upload Image</button>
+                </form>
+
+                <form asp-action="AddAttachmentUrl" method="post" class="mb-0">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="taskId" value="@Model.Id" />
+                    <div class="input-group mb-2">
+                        <input type="url" name="url" class="form-control" placeholder="Add link (YouTube, Vimeo...)" />
+                        <button class="btn btn-sm btn-outline-secondary" type="submit">Add Link</button>
+                    </div>
+                </form>
+                }
             </div>
         </div>
     </div>
+</div>
 
-    @section Scripts {
+@section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    }
+}
