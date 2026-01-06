@@ -23,6 +23,14 @@ namespace Grapher.Models
         [ForeignKey("ProjectId")]
         public virtual Project? Project { get; set; }
 
+        /// Parent can be null (root tasks)
+        public int? ParentTaskId { get; set; }
+        [ForeignKey("ParentTaskId")]
+        public virtual TaskItem? ParentTask { get; set; }
+
+        // children
+        public virtual ICollection<TaskItem> SubTasks { get; set; } = new List<TaskItem>();
+
         [Required]
         public required string CreatorId { get; set; }
         [ForeignKey("CreatorId")]
