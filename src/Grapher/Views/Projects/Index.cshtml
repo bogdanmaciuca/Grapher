@@ -38,9 +38,16 @@
                 </div>
 
 
-                @if ((ViewBag.IsOrganizer ?? false) == true) {
+                @{
+                    var currentUserId = UserManager.GetUserId(User);
+                    var isOrganizer = item.OrganizerId == currentUserId;
+                    var isAdmin = User.IsInRole(ViewBag.AdminRole ?? "Administrator");
+                }
+
+                @if (isOrganizer || isAdmin) {
                     <div class="card-footer bg-white border-0 pt-0 pb-3">
                         <div class="d-flex justify-content-end gap-2" style="position: relative; z-index: 2;">
+                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3 invite-btn" data-bs-toggle="modal" data-bs-target="#inviteModal" data-project-id="@item.Id">Invite</button>
                             <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Edit</a>
                             <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger rounded-pill px-3">Delete</a>
                         </div>
@@ -51,6 +58,35 @@
         }
     </div>
 
+    <!-- Invite Modal -->
+    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="inviteForm" method="post" action="@Url.Action("Invite", "Projects")" class="modal-content">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="inviteModalLabel">Invite Member to Project</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body position-relative">
+                    <input type="hidden" name="projectId" id="modalProjectId" value="" />
+                    <div class="mb-3 position-relative">
+                        <label for="inviteEmail" class="form-label">Search user by email</label>
+                        <input id="inviteEmail" name="email" class="form-control" autocomplete="off" />
+                        <div id="inviteSuggestions" class="list-group position-absolute w-100" style="z-index:1050;"></div>
+                        <div class="form-text">Type an email or select from suggestions (suggestions limited).</div>
+                    </div>
+
+                    <div id="inviteAlert" class="alert d-none" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Send Invitation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     @if (!Model.Any())
     {
     <div class="text-center py-5 text-muted">
@@ -58,4 +94,23 @@
         <h4>No projects yet</h4>
         <p>Create your first project to get started!</p>
     </div>
+    }
+
+    @section Scripts {
+        <script src="~/js/project-invite.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var inviteModal = document.getElementById('inviteModal');
+                if (inviteModal) {
+                    inviteModal.addEventListener('show.bs.modal', function (event) {
+                        var button = event.relatedTarget;
+                        var projectId = button.getAttribute('data-project-id');
+                        var modalProjectIdInput = inviteModal.querySelector('#modalProjectId');
+                        if (modalProjectIdInput) {
+                            modalProjectIdInput.value = projectId;
+                        }
+                    });
+                }
+            });
+        </script>
     }

@@ -26,7 +26,7 @@
             </span>
         </div>
         <form id="logoutForm" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-            <button id="logout" type="submit" class="btn btn-outline-secondary rounded-pill px-4">Logout</button>
+            <button id="logout" type="submit" class="btn btn-outline-secondary rounded-pill px-4" onclick="return confirm('Are you sure you want to logout?');">Logout</button>
         </form>
     }
     else

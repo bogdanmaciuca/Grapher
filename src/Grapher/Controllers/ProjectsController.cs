@@ -62,6 +62,7 @@ namespace Grapher.Controllers
                 return Forbid();
             }
 
+            ViewBag.AdminRole = _roles.AdminRole;
             return View(await projectsQuery.ToListAsync());
         }
 
