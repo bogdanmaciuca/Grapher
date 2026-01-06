@@ -54,9 +54,9 @@
                         {
                         <div class="d-flex flex-wrap gap-1">
                             @foreach (var m in Model.Members)
-                                {
-                            <span class="badge bg-light text-dark border">@m.User?.UserName ?? m.UserId</span>
-                                }
+                            {
+                                <span class="badge bg-light text-dark border">@(m.User?.UserName ?? m.UserId)</span>
+                            }
                         </div>
                         }
                         else
