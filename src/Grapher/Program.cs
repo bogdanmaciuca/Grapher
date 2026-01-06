@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Grapher.Data;
 using Grapher.Models;
-using Grapher.Services;
+// using Grapher.Services;
 using Grapher.Configuration;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -17,10 +17,19 @@ builder.Services.AddDbContext<ApplicationDbContext>(
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
+#if DEBUG
+    options.Password.RequireLowercase = false;
+    options.Password.RequireDigit = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequiredLength = 4;
+#else
+    options.Password.RequireLowercase = true;
     options.Password.RequireDigit = true;
-    options.Password.RequireNonAlphanumeric = true;
-    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
     options.Password.RequiredLength = 8;
+#endif
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();

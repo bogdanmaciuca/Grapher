@@ -8,11 +8,13 @@ namespace Grapher.Services
     public class SmtpOptions
     {
         public string Host { get; set; } = "localhost";
-        public int Port { get; set; } = 25;
+        public int Port { get; set; }
         public string? Username { get; set; }
         public string? Password { get; set; }
         public bool EnableSsl { get; set; } = false;
-        public string From { get; set; } = "no-reply@example.com";
+        // public string From { get; set; } = "no-reply@example.com";
+        public string SenderEmail { get; set; } = "noreply@example.com";
+        public string SenderName { get; set; } = "Grapher";
     }
 
     public class SmtpEmailSender : IEmailSender
@@ -24,20 +26,24 @@ namespace Grapher.Services
             _options = options.Value;
         }
 
-        public Task SendEmailAsync(string to, string subject, string body)
+        public async Task SendEmailAsync(string to, string subject, string body)
         {
-            var message = new MailMessage(_options.From, to, subject, body);
-            using var client = new SmtpClient(_options.Host, _options.Port)
+            var client = new SmtpClient(_options.Host, _options.Port)
             {
-                EnableSsl = _options.EnableSsl
+                Credentials = new NetworkCredential(_options.Username, _options.Password),
+                EnableSsl = true
             };
 
-            if (!string.IsNullOrEmpty(_options.Username))
+            var mailMessage = new MailMessage
             {
-                client.Credentials = new NetworkCredential(_options.Username, _options.Password);
-            }
+                From = new MailAddress(_options.SenderEmail, _options.SenderName),
+                Subject = subject,
+                Body = body,
+                IsBodyHtml = true
+            };
+            mailMessage.To.Add(to);
 
-            return client.SendMailAsync(message);
+            await client.SendMailAsync(mailMessage);
         }
     }
 }

@@ -1,22 +1,20 @@
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity.UI.Services;
 
-namespace Grapher.Services
+namespace Grapher.Services;
+
+// This implements Microsoft's interface but uses YOUR sender internally
+public class IdentityEmailSender : Microsoft.AspNetCore.Identity.UI.Services.IEmailSender
 {
-    // Adapter so Identity UI can get an IEmailSender while we use our implementation internally
-    public class IdentityEmailSender : Microsoft.AspNetCore.Identity.UI.Services.IEmailSender
+    private readonly Grapher.Services.IEmailSender _realSender;
+
+    public IdentityEmailSender(Grapher.Services.IEmailSender realSender)
     {
-        private readonly IEmailSender _inner;
+        _realSender = realSender;
+    }
 
-        public IdentityEmailSender(IEmailSender inner)
-        {
-            _inner = inner;
-        }
-
-        public Task SendEmailAsync(string email, string subject, string htmlMessage)
-        {
-            // delegate to your SmtpEmailSender (plain text body ok)
-            return _inner.SendEmailAsync(email, subject, htmlMessage);
-        }
+    public Task SendEmailAsync(string email, string subject, string htmlMessage)
+    {
+        // Delegate the work to your custom SMTP sender
+        return _realSender.SendEmailAsync(email, subject, htmlMessage);
     }
 }
