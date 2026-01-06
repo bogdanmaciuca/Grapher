@@ -23,4 +23,3 @@ namespace Grapher.Models
         public virtual ApplicationUser? Author { get; set; }
     }
 }
-

@@ -54,11 +54,11 @@
                     <dd class="col-sm-8">
                         @if (!string.IsNullOrWhiteSpace(Model.Description))
                         {
-                            @Model.Description
+                        @Model.Description
                         }
                         else
                         {
-                            <span class="text-muted">None</span>
+                        <span class="text-muted">None</span>
                         }
                     </dd>
 
@@ -232,11 +232,11 @@
                                 <div class="ratio ratio-16x9 mb-2">
                                     <iframe src="@embed" title="Vimeo video" allowfullscreen loading="lazy" frameborder="0"></iframe>
                                 </div>
-                                            }
-                                            else
-                                            {
+                                }
+                                else
+                                {
                                 <a href="@a.Url" target="_blank" rel="noopener noreferrer">@a.Url</a>
-                                            }
+                                }
                                         }
                             </div>
 
@@ -293,6 +293,67 @@
                     </div>
                 </form>
                 }
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
+            <div class="card-body">
+                <h5 class="fw-bold">Comments</h5>
+
+                @if (Model.Comments != null && Model.Comments.Any())
+               {
+                <ul class="list-group mb-3">
+                    @foreach (var c in Model.Comments.OrderByDescending(cm => cm.PostedAt))
+                   {
+                       var isCommentAuthor = c.AuthorId == currentUserId;
+                       var canRemoveComment = isAdmin || isProjectOrganizer || isCommentAuthor;
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-baseline justify-content-between">
+                                    <div>
+                                        <strong>@(c.Author?.UserName ?? c.AuthorId)</strong>
+                                        <div class="small text-muted">@c.PostedAt.ToString("g")</div>
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    @Html.Raw(System.Net.WebUtility.HtmlEncode(c.Content ?? "").Replace("\n", "<br/>"))
+                                </div>
+                            </div>
+
+                            @if (canRemoveComment)
+                            {
+                            <div class="ms-3">
+                                <form asp-action="RemoveComment" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@c.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove this comment?');">Remove</button>
+                                </form>
+                            </div>
+                            }
+                        </div>
+                    </li>
+                   }
+                </ul>
+               }
+               else
+               {
+                <div class="text-muted mb-3">No comments yet.</div>
+               }
+
+                @if (User.Identity?.IsAuthenticated ?? false)
+               {
+                <form asp-action="AddComment" method="post" class="mb-0">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="taskId" value="@Model.Id" />
+                    <div class="mb-2">
+                        <textarea name="content" class="form-control" rows="3" placeholder="Write a comment..."></textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary">Add Comment</button>
+                    </div>
+                </form>
+               }
             </div>
         </div>
     </div>

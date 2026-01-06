@@ -1,85 +1,93 @@
 @model Grapher.Models.PaginatedList<Grapher.Models.TaskItem>
-    @using System.Security.Claims
+@using System.Security.Claims
 
-    @{
+@{
     ViewData["Title"] = "Tasks";
     var pageSize = (int)(ViewData["PageSize"] ?? 10);
     var currentPage = Model.PageIndex;
     var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
     var isAdmin = User.IsInRole("Administrator");
+}
+
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <h2 class="fw-bold text-dark">My Tasks</h2>
+    <a asp-action="Create" class="btn btn-primary rounded-pill">Create Task</a>
+    <small class="text-muted">Page @Model.PageIndex of @Model.TotalPages</small>
+</div>
+
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    @foreach (var item in Model)
+    {
+        var isProjectOrganizer = item.Project != null && item.Project.OrganizerId == currentUserId;
+        var isAssigned = item.Assignments != null && item.Assignments.Any(a => a.UserId == currentUserId);
+        var canEdit = isAdmin || isProjectOrganizer || isAssigned;
+        var canDelete = isAdmin || isProjectOrganizer || isAssigned;
+
+        <div class="col">
+            <div class="card h-100 border-0 shadow-sm shadow-hover" style="border-radius: 12px; transition: 0.2s;">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3">
+                        <h5 class="card-title fw-bold mb-1">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none text-dark stretched-link">
+                                @item.Title
+                            </a>
+                        </h5>
+                        <small class="text-muted">
+                            Project: @(item.Project != null ? item.Project.Title : "N/A")
+                        </small>
+                    </div>
+
+                    <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+                        <span class="badge bg-light text-dark border">
+                            Status: @item.Status
+                        </span>
+                        @if (item.EndDate.HasValue)
+                        {
+                        <span class="badge bg-light text-dark border">
+                            Due: @item.EndDate.Value.ToString("MMM dd, yyyy")
+                        </span>
+                        }
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white border-0 pt-0 pb-3">
+                    <div class="d-flex justify-content-end gap-2" style="position: relative; z-index: 2;">
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary rounded-pill px-3">View</a>
+                        @if (canEdit)
+                        {
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Edit</a>
+                        }
+                        @if (canDelete)
+                        {
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger rounded-pill px-3">Delete</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
     }
+</div>
 
-    <h2>Tasks</h2>
+<hr />
+<nav aria-label="Page navigation">
+    <ul class="pagination">
+        <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+            <a class="page-link" href="@Url.Action("Index", new { page = currentPage - 1, pageSize = pageSize })" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
 
-    <div class="mb-3 d-flex justify-content-between align-items-center">
-        <div>
-            <a asp-action="Create" class="btn btn-primary">Create Task</a>
-        </div>
-        <div>
-            <small class="text-muted">Page @Model.PageIndex of @Model.TotalPages</small>
-        </div>
-    </div>
+        @for (int i = 1; i <= Model.TotalPages; i++)
+{
+        <li class="page-item @(i == currentPage ? "active" : "")">
+            <a class="page-link" href="@Url.Action("Index", new { page = i, pageSize = pageSize })">@i</a>
+        </li>
+}
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Project</th>
-                <th>Status</th>
-                <th>Start</th>
-                <th>End</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var item in Model)
-        {
-            var isCreator = item.CreatorId == currentUserId;
-            var isProjectOrganizer = item.Project != null && item.Project.OrganizerId == currentUserId;
-            var canEdit = isAdmin || isCreator || isProjectOrganizer;
-            var canDelete = canEdit; // same rule for delete per requirements
-
-            <tr>
-                <td>@item.Title</td>
-                <td>@item.Project?.Title</td>
-                <td>@item.Status</td>
-                <td>@item.StartDate.ToString("yyyy-MM-dd")</td>
-                <td>@(item.EndDate.HasValue ? item.EndDate.Value.ToString("yyyy-MM-dd") : "")</td>
-                <td>
-                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">View</a>
-                    @if (canEdit)
-                    {
-                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary ms-1">Edit</a>
-                    }
-                    @if (canDelete)
-                    {
-                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger ms-1">Delete</a>
-                    }
-                </td>
-            </tr>
-        }
-        </tbody>
-    </table>
-
-    <nav aria-label="Page navigation">
-        <ul class="pagination">
-            <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
-                <a class="page-link" href="@Url.Action("Index", new { page = currentPage - 1, pageSize = pageSize })" aria-label="Previous">
-                    <span aria-hidden="true">&laquo;</span>
-                </a>
-            </li>
-
-            @for (int i = 1; i <= Model.TotalPages; i++)
-        {
-            <li class="page-item @(i == currentPage ? "active" : "")">
-                <a class="page-link" href="@Url.Action("Index", new { page = i, pageSize = pageSize })">@i</a>
-            </li>
-        }
-
-            <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
-                <a class="page-link" href="@Url.Action("Index", new { page = currentPage + 1, pageSize = pageSize })" aria-label="Next">
-                    <span aria-hidden="true">&raquo;</span>
-                </a>
-            </li>
-        </ul>
-    </nav>
+        <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+            <a class="page-link" href="@Url.Action("Index", new { page = currentPage + 1, pageSize = pageSize })" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+    </ul>
+</nav>
