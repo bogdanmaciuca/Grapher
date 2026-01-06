@@ -38,7 +38,16 @@
                     <dd class="col-sm-8">@Model.Creator.UserName</dd>
 
                     <dt class="col-sm-4 fw-bold">Description</dt>
-                    <dd class="col-sm-8">@(!string.IsNullOrWhiteSpace(Model.Description) ? Model.Description : "<span class=\"text-muted\">None</span>")</dd>
+                    <dd class="col-sm-8">
+                        @if (!string.IsNullOrWhiteSpace(Model.Description))
+                        {
+                            @Model.Description
+                        }
+                        else
+                        {
+                            <span class="text-muted">None</span>
+                        }
+                    </dd>
 
                     <dt class="col-sm-4 fw-bold">Status</dt>
                     <dd class="col-sm-8">
