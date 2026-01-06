@@ -52,6 +52,13 @@
                             <span asp-validation-for="EndDate" class="text-danger"></span>
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label asp-for="ParentTaskId" class="form-label fw-bold">Parent Task (optional)</label>
+                        <select asp-for="ParentTaskId" class="form-control" asp-items="ViewBag.ParentTaskId">
+                            <option value="">-- none --</option>
+                        </select>
+                        <span asp-validation-for="ParentTaskId" class="text-danger"></span>
+                    </div>
                     <div class="d-flex justify-content-end">
                         <input type="submit" value="Save" class="btn btn-primary rounded-pill px-5" />
                     </div>

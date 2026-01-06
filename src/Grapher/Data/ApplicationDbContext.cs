@@ -105,11 +105,24 @@ namespace Grapher.Data
                 .HasForeignKey(a => a.TaskId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.Entity<Attachment>()
+                .HasOne(a => a.Task)
+                .WithMany()
+                .HasForeignKey(a => a.TaskId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             builder.Entity<UserProfile>()
                 .HasOne(up => up.User)
                 .WithOne(u => u.Profile)
                 .HasForeignKey<UserProfile>(up => up.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Self-referencing TaskItem: a task may have many SubTasks and optional ParentTask
+            builder.Entity<TaskItem>()
+                .HasOne(t => t.ParentTask)
+                .WithMany(t => t.SubTasks)
+                .HasForeignKey(t => t.ParentTaskId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

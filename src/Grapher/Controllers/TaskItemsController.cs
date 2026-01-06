@@ -23,7 +23,7 @@ namespace Grapher.Controllers
         private readonly AppRoles _roles;
 
         private static readonly string[] AllowedImageExtensions = { ".png", ".jpg", ".jpeg", ".svg" };
-        private const long MaxImageBytes = 67 * 1024 * 1024; // 67 MB allowed at most 
+        private const long MaxImageBytes = 67 * 1024 * 1024; // 67 MB allowed at most
 
         public TaskItemsController(
             ApplicationDbContext context,
@@ -36,7 +36,7 @@ namespace Grapher.Controllers
         }
 
         // GET: TaskItems
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int? page, int? pageSize)
         {
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole(_roles.AdminRole);
@@ -52,7 +52,11 @@ namespace Grapher.Controllers
                     .ThenInclude(a => a.User)
                 .AsNoTracking();
 
-            if (!string.IsNullOrEmpty(currentUserId))
+            if (isAdmin)
+            {
+                // Admin sees all tasks
+            }
+            else if (!string.IsNullOrEmpty(currentUserId))
             {
                 // Authenticated non-admin: only tasks they created, assigned to, or that belong to projects they organize / are member of
                 tasksQuery = tasksQuery.Where(t =>
@@ -61,13 +65,22 @@ namespace Grapher.Controllers
                     (t.Project != null && t.Project.OrganizerId == currentUserId) ||
                     (t.Project != null && t.Project.Members.Any(m => m.UserId == currentUserId)));
             }
-            else if (!isAdmin)
+            else
             {
                 // Unauthenticated: no access
                 return Forbid();
             }
 
-            return View(await tasksQuery.ToListAsync());
+            // pagination defaults
+            var pageNumber = page ?? 1;
+            var size = pageSize.HasValue && pageSize.Value > 0 ? pageSize.Value : 10;
+
+            // deterministic ordering
+            tasksQuery = tasksQuery.OrderByDescending(t => t.StartDate).ThenByDescending(t => t.Id);
+
+            var paged = await Models.PaginatedList<TaskItem>.CreateAsync(tasksQuery, pageNumber, size);
+            ViewData["PageSize"] = size;
+            return View(paged);
         }
 
         // GET: TaskItems/Details/5
@@ -84,6 +97,12 @@ namespace Grapher.Controllers
                 .Include(t => t.Assignments)
                     .ThenInclude(a => a.User)
                 .Include(t => t.Attachments)
+                .Include(t => t.ParentTask)
+                .Include(t => t.SubTasks)
+                    .ThenInclude(st => st.Creator)
+                .Include(t => t.SubTasks)
+                    .ThenInclude(st => st.Assignments)
+                        .ThenInclude(a => a.User)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -104,7 +123,6 @@ namespace Grapher.Controllers
 
             return View(taskItem);
         }
-
         // GET: TaskItems/Create
         [Authorize]
         public async Task<IActionResult> Create()
@@ -129,6 +147,15 @@ namespace Grapher.Controllers
 
             ViewData["ProjectId"] = new SelectList(await projectsQuery.ToListAsync(), "Id", "Title");
             ViewData["Users"] = new SelectList(_context.Users, "Id", "UserName");
+
+            // Parent tasks: show tasks in projects the user can access (simple approach)
+            var accessibleProjectIds = await projectsQuery.Select(p => p.Id).ToListAsync();
+            var parentTasks = await _context.TaskItems
+                .Where(t => accessibleProjectIds.Contains(t.ProjectId))
+                .Select(t => new { t.Id, t.Title })
+                .ToListAsync();
+            ViewData["ParentTaskId"] = new SelectList(parentTasks, "Id", "Title");
+
             return View();
         }
 
@@ -136,12 +163,40 @@ namespace Grapher.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
-        public async Task<IActionResult> Create([Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate")] TaskItem taskItem, string[] selectedUsers)
+        public async Task<IActionResult> Create([Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate,ParentTaskId")] TaskItem taskItem, string[] selectedUsers)
         {
             var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser == null || currentUser.IsGuest)
+            if (currentUser == null || currentUser.IsGuest) return Forbid();
+
+            // validate that user can create tasks for the selected project
+            var project = await _context.Projects
+                .Include(p => p.Members)
+                .FirstOrDefaultAsync(p => p.Id == taskItem.ProjectId);
+
+            if (project == null) return BadRequest("Invalid project.");
+
+            var currentUserId = currentUser.Id;
+            var isAdmin = User.IsInRole(_roles.AdminRole);
+            var isOrganizer = project.OrganizerId == currentUserId;
+            var isMember = project.Members.Any(m => m.UserId == currentUserId);
+
+            if (!isAdmin && !isOrganizer && !isMember)
             {
                 return Forbid();
+            }
+
+            // Validate parent if provided (ParentTaskId uses 0 as "none" when not set)
+            if (taskItem.ParentTaskId != 0)
+            {
+                var parent = await _context.TaskItems.FindAsync(taskItem.ParentTaskId);
+                if (parent == null || parent.ProjectId != taskItem.ProjectId)
+                {
+                    ModelState.AddModelError(nameof(TaskItem.ParentTaskId), "Parent task must exist and belong to the same project.");
+                }
+                else if (parent.Id == taskItem.Id && taskItem.Id != 0)
+                {
+                    ModelState.AddModelError(nameof(TaskItem.ParentTaskId), "A task cannot be its own parent.");
+                }
             }
 
             taskItem.CreatorId = currentUser.Id;
@@ -150,8 +205,6 @@ namespace Grapher.Controllers
 
             if (ModelState.IsValid)
             {
-                taskItem.CreatorId = currentUser.Id;
-
                 if (selectedUsers != null)
                 {
                     foreach (var user in selectedUsers)
@@ -167,6 +220,13 @@ namespace Grapher.Controllers
 
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title", taskItem.ProjectId);
             ViewData["Users"] = new SelectList(_context.Users, "Id", "UserName");
+
+            var parentTasks = await _context.TaskItems
+                .Where(t => t.ProjectId == taskItem.ProjectId)
+                .Select(t => new { t.Id, t.Title })
+                .ToListAsync();
+            ViewData["ParentTaskId"] = new SelectList(parentTasks, "Id", "Title", taskItem.ParentTaskId);
+
             return View(taskItem);
         }
 
@@ -191,11 +251,13 @@ namespace Grapher.Controllers
 
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole(_roles.AdminRole);
-            var isCreator = !string.IsNullOrEmpty(currentUserId) && taskItem.CreatorId == currentUserId;
-            var isProjectOrganizer = !string.IsNullOrEmpty(currentUserId) && taskItem.Project != null && taskItem.Project.OrganizerId == currentUserId;
-            var isProjectMember = !string.IsNullOrEmpty(currentUserId) && taskItem.Project != null && taskItem.Project.Members.Any(m => m.UserId == currentUserId);
 
-            if (!isAdmin && !isCreator && !isProjectOrganizer && !isProjectMember)
+            // permission: organizer of the project can edit any task in project;
+            // non-organizer member can edit only own tasks (creator)
+            var isOrganizer = taskItem.Project != null && taskItem.Project.OrganizerId == currentUserId;
+            var isCreator = taskItem.CreatorId == currentUserId;
+
+            if (!isAdmin && !isOrganizer && !isCreator)
             {
                 return Forbid();
             }
@@ -203,6 +265,14 @@ namespace Grapher.Controllers
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title", taskItem.ProjectId);
             var userIds = taskItem.Assignments.Select(a => a.UserId).ToList();
             ViewData["Users"] = new MultiSelectList(_context.Users, "Id", "UserName", userIds);
+
+            // Parent tasks: same project, exclude current to avoid self-parent
+            var parentTasks = await _context.TaskItems
+                .Where(t => t.ProjectId == taskItem.ProjectId && t.Id != taskItem.Id)
+                .Select(t => new { t.Id, t.Title })
+                .ToListAsync();
+            ViewData["ParentTaskId"] = new SelectList(parentTasks, "Id", "Title", taskItem.ParentTaskId);
+
             return View(taskItem);
         }
 
@@ -210,7 +280,7 @@ namespace Grapher.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate")] TaskItem taskItem, string[] selectedUsers)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate,ParentTaskId")] TaskItem taskItem, string[] selectedUsers)
         {
             if (id != taskItem.Id)
             {
@@ -229,17 +299,30 @@ namespace Grapher.Controllers
 
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole(_roles.AdminRole);
-            var isCreator = !string.IsNullOrEmpty(currentUserId) && existingTask.CreatorId == currentUserId;
-            var isProjectOrganizer = !string.IsNullOrEmpty(currentUserId) && existingTask.Project != null && existingTask.Project.OrganizerId == currentUserId;
-            var isProjectMember = !string.IsNullOrEmpty(currentUserId) && existingTask.Project != null && existingTask.Project.Members.Any(m => m.UserId == currentUserId);
 
-            if (!isAdmin && !isCreator && !isProjectOrganizer && !isProjectMember)
+            var isOrganizer = existingTask.Project != null && existingTask.Project.OrganizerId == currentUserId;
+            var isCreator = existingTask.CreatorId == currentUserId;
+
+            // permission: organizer can edit any task in project; non-organizer can edit only own tasks
+            if (!isAdmin && !isOrganizer && !isCreator) return Forbid();
+
+            // Validate parent if provided (0 = none)
+            if (taskItem.ParentTaskId != 0)
             {
-                return Forbid();
+                if (taskItem.ParentTaskId == existingTask.Id)
+                {
+                    ModelState.AddModelError(nameof(TaskItem.ParentTaskId), "A task cannot be its own parent.");
+                }
+                else
+                {
+                    var parent = await _context.TaskItems.FindAsync(taskItem.ParentTaskId);
+                    if (parent == null || parent.ProjectId != existingTask.ProjectId)
+                    {
+                        ModelState.AddModelError(nameof(TaskItem.ParentTaskId), "Parent task must exist and belong to the same project.");
+                    }
+                }
             }
 
-            // Ensure required server-only fields are present for model validation.
-            // The binder doesn't supply Creator/CreatorId, so populate/remove ModelState entries before checking validity.
             taskItem.CreatorId = existingTask.CreatorId;
             ModelState.Remove(nameof(TaskItem.Creator));
             ModelState.Remove(nameof(TaskItem.CreatorId));
@@ -254,6 +337,7 @@ namespace Grapher.Controllers
                     existingTask.Status = taskItem.Status;
                     existingTask.StartDate = taskItem.StartDate;
                     existingTask.EndDate = taskItem.EndDate;
+                    existingTask.ParentTaskId = taskItem.ParentTaskId == 0 ? null : taskItem.ParentTaskId;
 
                     existingTask.Assignments.Clear();
                     if (selectedUsers != null)
@@ -264,27 +348,25 @@ namespace Grapher.Controllers
                         }
                     }
 
-                    // existingTask is already tracked; no need to call Update but it's harmless.
                     _context.Update(existingTask);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!TaskItemExists(taskItem.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
+                    if (!TaskItemExists(taskItem.Id)) return NotFound();
+                    throw;
                 }
                 return RedirectToAction(nameof(Index));
             }
 
-            // If we get here ModelState was invalid — re-populate selects and show the form with the submitted values.
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title", taskItem.ProjectId);
             ViewData["Users"] = new MultiSelectList(_context.Users, "Id", "UserName", selectedUsers);
+            var parentTasks = await _context.TaskItems
+                .Where(t => t.ProjectId == existingTask.ProjectId && t.Id != existingTask.Id)
+                .Select(t => new { t.Id, t.Title })
+                .ToListAsync();
+            ViewData["ParentTaskId"] = new SelectList(parentTasks, "Id", "Title", taskItem.ParentTaskId);
+
             return View(taskItem);
         }
 
@@ -292,29 +374,20 @@ namespace Grapher.Controllers
         [Authorize]
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var taskItem = await _context.TaskItems
                 .Include(t => t.Project)
                 .Include(t => t.Creator)
                 .FirstOrDefaultAsync(m => m.Id == id);
-            if (taskItem == null)
-            {
-                return NotFound();
-            }
+            if (taskItem == null) return NotFound();
 
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole(_roles.AdminRole);
-            var isCreator = !string.IsNullOrEmpty(currentUserId) && taskItem.CreatorId == currentUserId;
-            var isProjectOrganizer = !string.IsNullOrEmpty(currentUserId) && taskItem.Project != null && taskItem.Project.OrganizerId == currentUserId;
+            var isProjectOrganizer = taskItem.Project != null && taskItem.Project.OrganizerId == currentUserId;
+            var isCreator = taskItem.CreatorId == currentUserId;
 
-            if (!isAdmin && !isCreator && !isProjectOrganizer)
-            {
-                return Forbid();
-            }
+            if (!isAdmin && !isProjectOrganizer && !isCreator) return Forbid();
 
             return View(taskItem);
         }
@@ -330,19 +403,16 @@ namespace Grapher.Controllers
             {
                 var currentUserId = _userManager.GetUserId(User);
                 var isAdmin = User.IsInRole(_roles.AdminRole);
-                var isCreator = !string.IsNullOrEmpty(currentUserId) && taskItem.CreatorId == currentUserId;
+                var isCreator = taskItem.CreatorId == currentUserId;
                 var project = await _context.Projects.FindAsync(taskItem.ProjectId);
-                var isProjectOrganizer = !string.IsNullOrEmpty(currentUserId) && project != null && project.OrganizerId == currentUserId;
+                var isProjectOrganizer = project != null && project.OrganizerId == currentUserId;
 
-                if (!isAdmin && !isCreator && !isProjectOrganizer)
-                {
-                    return Forbid();
-                }
+                if (!isAdmin && !isCreator && !isProjectOrganizer) return Forbid();
 
                 _context.TaskItems.Remove(taskItem);
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
