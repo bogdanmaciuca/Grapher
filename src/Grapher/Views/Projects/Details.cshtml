@@ -92,6 +92,18 @@
             </div>
         </div>
 
+        @if (Model.Tasks != null && Model.Tasks.Any())
+        {
+        <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
+            <div class="card-body">
+                <h5 class="fw-bold mb-3">Task Graph</h5>
+                <div class="mermaid">
+                    @Html.Raw(ViewBag.MermaidGraph)
+                </div>
+            </div>
+        </div>
+        }
+
         <!-- project tasks preview or other content could go here -->
     </div>
 </div>
@@ -127,4 +139,8 @@
 
 @section Scripts {
     <script src="~/js/project-invite.js"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
 }

@@ -79,12 +79,56 @@ namespace Grapher.Controllers
                 .Include(p => p.Members)
                     .ThenInclude(pm => pm.User)
                 .Include(p => p.AiSummary)
+                .Include(p => p.Tasks)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (project == null)
             {
                 return NotFound();
             }
+
+            // Build Mermaid Graph
+            var graphBuilder = new System.Text.StringBuilder();
+            graphBuilder.AppendLine("graph TD;");
+            
+            // Check if there are any tasks
+            if (project.Tasks != null && project.Tasks.Any())
+            {
+                foreach (var task in project.Tasks)
+                {
+                    // Clean title for Mermaid safety (alphanumeric only, simple approach)
+                    var safeTitle = System.Text.RegularExpressions.Regex.Replace(task.Title, "[^a-zA-Z0-9 ]", "");
+                    var safeId = $"T{task.Id}";
+                    
+                    // Add node definition with status styling
+                    var styleClass = task.Status switch
+                    {
+                        Grapher.Models.TaskStatus.Completed => ":::completed",
+                        Grapher.Models.TaskStatus.InProgress => ":::inprogress",
+                        _ => ":::notstarted"
+                    };
+                    
+                    graphBuilder.AppendLine($"{safeId}[\"{safeTitle}\"]{styleClass};");
+
+                    // Add edge if parent exists
+                    if (task.ParentTaskId.HasValue)
+                    {
+                        var safeParentId = $"T{task.ParentTaskId}";
+                        graphBuilder.AppendLine($"{safeParentId} --> {safeId};");
+                    }
+                }
+                
+                // Class definitions
+                graphBuilder.AppendLine("classDef completed fill:#d4edda,stroke:#28a745,stroke-width:2px;");
+                graphBuilder.AppendLine("classDef inprogress fill:#fff3cd,stroke:#ffc107,stroke-width:2px;");
+                graphBuilder.AppendLine("classDef notstarted fill:#f8f9fa,stroke:#6c757d,stroke-width:2px;");
+            }
+            else
+            {
+                 graphBuilder.AppendLine("Start[Start] --> End[End];");
+            }
+            
+            ViewBag.MermaidGraph = graphBuilder.ToString();
 
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole(_roles.AdminRole);
