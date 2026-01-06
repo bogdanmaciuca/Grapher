@@ -24,16 +24,6 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold text-dark">@Model.Title</h2>
-        <p class="text-muted mb-0">Project: @Model.Project?.Title ?? "N/A"</p>
-        <p class="text-muted mb-0">Created by: @Model.Creator?.UserName ?? "Unknown"</p>
-        @if (Model.StartDate != default)
-        {
-        <small class="text-muted">Start: @Model.StartDate.ToString("MMMM dd, yyyy")</small>
-        }
-        @if (Model.EndDate.HasValue)
-        {
-        <small class="text-muted ms-3">End: @Model.EndDate.Value.ToString("MMMM dd, yyyy")</small>
-        }
     </div>
     <div class="d-flex gap-2">
         @if (canEdit)
