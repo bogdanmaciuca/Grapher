@@ -125,7 +125,7 @@ namespace Grapher.Controllers
         }
         // GET: TaskItems/Create
         [Authorize]
-        public async Task<IActionResult> Create()
+        public async Task<IActionResult> Create(int? parentId)
         {
             var currentUser = await _userManager.GetUserAsync(User);
             if (currentUser == null || currentUser.IsGuest)
@@ -144,17 +144,40 @@ namespace Grapher.Controllers
                     p.OrganizerId == currentUserId ||
                     p.Members.Any(m => m.UserId == currentUserId));
             }
+            
+            var projects = await projectsQuery.ToListAsync();
 
-            ViewData["ProjectId"] = new SelectList(await projectsQuery.ToListAsync(), "Id", "Title");
+            // Handle parentId pre-selection
+            int? selectedProjectId = null;
+            if (parentId.HasValue)
+            {
+                var parentTask = await _context.TaskItems.AsNoTracking().FirstOrDefaultAsync(t => t.Id == parentId.Value);
+                if (parentTask != null)
+                {
+                    // Verify user has access to this project
+                    if (projects.Any(p => p.Id == parentTask.ProjectId))
+                    {
+                        selectedProjectId = parentTask.ProjectId;
+                    }
+                    else
+                    {
+                        // User trying to create subtask for inaccessible project -> ignore parentId
+                        parentId = null; 
+                    }
+                }
+            }
+
+            ViewData["ProjectId"] = new SelectList(projects, "Id", "Title", selectedProjectId);
             ViewData["Users"] = new SelectList(_context.Users, "Id", "UserName");
 
             // Parent tasks: show tasks in projects the user can access (simple approach)
-            var accessibleProjectIds = await projectsQuery.Select(p => p.Id).ToListAsync();
+            var accessibleProjectIds = projects.Select(p => p.Id).ToList();
             var parentTasks = await _context.TaskItems
                 .Where(t => accessibleProjectIds.Contains(t.ProjectId))
                 .Select(t => new { t.Id, t.Title })
                 .ToListAsync();
-            ViewData["ParentTaskId"] = new SelectList(parentTasks, "Id", "Title");
+            
+            ViewData["ParentTaskId"] = new SelectList(parentTasks, "Id", "Title", parentId);
 
             return View();
         }

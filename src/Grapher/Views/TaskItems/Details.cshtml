@@ -130,7 +130,7 @@
                     @* Optionally link to create a subtask prefilled with ParentTaskId *@
                     @if (User.Identity?.IsAuthenticated ?? false)
                     {
-                    <a asp-action="Create" asp-route-projectId="@Model.ProjectId" asp-route-parentTaskId="@Model.Id" class="btn btn-sm btn-outline-primary">Create Subtask</a>
+                    <a asp-action="Create" asp-route-parentId="@Model.Id" class="btn btn-sm btn-outline-primary">Create Subtask</a>
                     }
                 </div>
 
