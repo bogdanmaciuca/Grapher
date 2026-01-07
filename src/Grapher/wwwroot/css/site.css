@@ -50,3 +50,11 @@
     border-radius: 50px;
     font-weight: 600;
 }
+
+.btn-action {
+    height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+

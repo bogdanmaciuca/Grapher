@@ -7,6 +7,8 @@
 @{
     var inviteSuccess = TempData["InviteSuccess"] as string;
     var inviteError = TempData["InviteError"] as string;
+    var summarySuccess = TempData["SummarySuccess"] as string;
+    var summaryError = TempData["SummaryError"] as string;
 }
 @if (!string.IsNullOrEmpty(inviteSuccess))
 {
@@ -15,6 +17,14 @@
 @if (!string.IsNullOrEmpty(inviteError))
 {
 <div class="alert alert-danger">@inviteError</div>
+}
+@if (!string.IsNullOrEmpty(summarySuccess))
+{
+<div class="alert alert-success">@summarySuccess</div>
+}
+@if (!string.IsNullOrEmpty(summaryError))
+{
+<div class="alert alert-danger">@summaryError</div>
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -27,20 +37,23 @@
         }
     </div>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center flex-nowrap">
         @if ((ViewBag.IsOrganizer ?? false) == true)
         {
-            <a asp-action="ManageMembers" asp-route-id="@Model.Id" class="btn btn-outline-primary rounded-pill px-4">Manage Members</a>
-            <button id="openInviteBtn" class="btn btn-outline-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#inviteModal">Invite Member</button>
-            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-4">Edit</a>
+            <a asp-action="ManageMembers" asp-route-id="@Model.Id" class="btn btn-outline-primary rounded-pill px-3 btn-action text-nowrap">Manage Members</a>
+            <button id="openInviteBtn" class="btn btn-outline-primary rounded-pill px-3 btn-action text-nowrap" data-bs-toggle="modal" data-bs-target="#inviteModal">Invite Member</button>
+            <form asp-action="GenerateSummary" asp-route-id="@Model.Id" method="post" class="d-inline">
+                 <button type="submit" class="btn btn-outline-info rounded-pill px-3 btn-action text-nowrap">Generate AI Summary</button>
+            </form>
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary rounded-pill px-3 btn-action text-nowrap">Edit</a>
         }
         @if ((ViewBag.IsMember ?? false) == true && (ViewBag.IsOrganizer ?? false) == false)
         {
             <form asp-action="Leave" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to leave this project?');">
-                <button type="submit" class="btn btn-outline-danger rounded-pill px-4">Leave Project</button>
+                <button type="submit" class="btn btn-outline-danger rounded-pill px-3 btn-action text-nowrap">Leave Project</button>
             </form>
         }
-        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4">Back to List</a>
+        <a asp-action="Index" class="btn btn-outline-secondary rounded-pill px-3 btn-action text-nowrap">Back to List</a>
     </div>
 </div>
 
@@ -75,7 +88,7 @@
                     <dd class="col-sm-8">
                         @if (Model.AiSummary?.SummaryText != null)
                         {
-                        @Model.AiSummary.SummaryText
+                        <div id="aiSummaryContent" style="white-space: pre-wrap;">@Model.AiSummary.SummaryText</div>
                         }
                         else
                         {
@@ -141,6 +154,19 @@
     <script src="~/js/project-invite.js"></script>
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
+
         mermaid.initialize({ startOnLoad: true });
+
+        const summaryElement = document.getElementById('aiSummaryContent');
+        if (summaryElement) {
+            const rawMarkdown = summaryElement.textContent;
+            // marked.parse returns a promise if async is enabled, but synchronous by default. 
+            // Checking if it returns a promise just in case, though standard ESM usage is sync usually unless configured otherwise.
+            // However, the ESM build might be async. Let's check or assume sync for now as per common usage.
+            // Actually, recent marked versions are synchronous.
+            summaryElement.innerHTML = marked.parse(rawMarkdown);
+            summaryElement.style.whiteSpace = 'normal'; 
+        }
     </script>
 }

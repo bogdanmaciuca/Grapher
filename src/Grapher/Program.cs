@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Grapher.Data;
 using Grapher.Models;
-// using Grapher.Services;
+using Grapher.Services;
 using Grapher.Configuration;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -13,6 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(
         options => options.UseNpgsql(connectionString));
+
+builder.Services.AddHttpClient<IAiSummaryService, GeminiAiService>();
 
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {

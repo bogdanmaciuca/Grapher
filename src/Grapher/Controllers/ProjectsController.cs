@@ -21,6 +21,7 @@ namespace Grapher.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly AppRoles _roles;
         private readonly IEmailSender _emailSender;
+        private readonly IAiSummaryService _aiSummaryService;
         private readonly ILogger<ProjectsController> _logger;
 
         public ProjectsController(
@@ -28,12 +29,14 @@ namespace Grapher.Controllers
             UserManager<ApplicationUser> userManager,
             IOptions<AppRoles> rolesOptions,
             IEmailSender emailSender,
+            IAiSummaryService aiSummaryService,
             ILogger<ProjectsController> logger)
         {
             _context = context;
             _userManager = userManager;
             _roles = rolesOptions?.Value ?? new AppRoles();
             _emailSender = emailSender;
+            _aiSummaryService = aiSummaryService;
             _logger = logger;
         }
 
@@ -144,6 +147,66 @@ namespace Grapher.Controllers
             ViewBag.IsOrganizer = isOrganizer;
             ViewBag.IsMember = isMember;
             return View(project);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> GenerateSummary(int id)
+        {
+            var project = await _context.Projects
+                .Include(p => p.Tasks)
+                    .ThenInclude(t => t.Assignments)
+                        .ThenInclude(a => a.User)
+                .Include(p => p.AiSummary)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            if (project == null)
+            {
+                return NotFound();
+            }
+
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole(_roles.AdminRole);
+            var isOrganizer = project.OrganizerId == currentUserId;
+
+            if (!isAdmin && !isOrganizer)
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                var summaryText = await _aiSummaryService.GenerateProjectSummaryAsync(project, project.Tasks);
+
+                if (project.AiSummary == null)
+                {
+                    project.AiSummary = new ProjectAiSummary
+                    {
+                        ProjectId = project.Id,
+                        Project = project,
+                        SummaryText = summaryText,
+                        LastUpdated = DateTime.UtcNow
+                    };
+                    _context.Add(project.AiSummary);
+                }
+                else
+                {
+                    project.AiSummary.SummaryText = summaryText;
+                    project.AiSummary.LastUpdated = DateTime.UtcNow;
+                    _context.Update(project.AiSummary);
+                }
+
+                await _context.SaveChangesAsync();
+                TempData["SummarySuccess"] = "AI Summary generated successfully.";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating summary for project {ProjectId}", id);
+                TempData["SummaryError"] = "Failed to generate AI summary.";
+            }
+
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         // GET: Projects/Create - authenticated non-guest users allowed to create
