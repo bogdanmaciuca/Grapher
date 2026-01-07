@@ -98,7 +98,7 @@
                         <div class="d-flex flex-wrap gap-1">
                             @foreach (var a in Model.Assignments)
                             {
-                            <span class="badge bg-secondary text-white">@a.User?.UserName ?? a.UserId</span>
+                            <span class="badge bg-secondary text-white">@(a.User?.UserName ?? a.UserId)</span>
                             }
                         </div>
                         }
@@ -165,7 +165,7 @@
                                     {
                                         foreach (var a in st.Assignments)
                                         {
-                                    <span class="badge bg-secondary text-white me-1">@a.User?.UserName ?? a.UserId</span>
+                                            <span class="badge bg-secondary text-white me-1">@(a.User?.UserName ?? a.UserId)</span>
                                         }
                                     }
                                 </td>
