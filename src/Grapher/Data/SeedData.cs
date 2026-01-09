@@ -135,18 +135,132 @@ namespace Grapher.Data
             context.ProjectMembers.AddRange(memberships);
             await context.SaveChangesAsync();
 
-            // // Tasks
-            // var tasks = new List<TaskItem> {
-            //     // Voxels
-            //     new TaskItem {
-            //         Title = "Create platform layer",
-            //         Description = "Create API for: window creation, event polling, window resizing, swapchain operations.",
-            //         Status = Grapher.Models.TaskStatus.Completed,
-            //         StartDate = DateTime.UtcNow.AddDays(-9),
-            //         EndDate = DateTime.UtcNow.AddDays(-8),
-            //         CreatorId = bobomac.Id,
-            //     }
-            // }
+            // Tasks
+            var platformLayer = new TaskItem {
+                Title = "Create platform layer",
+                Description = "Create API for: window creation, event polling, window resizing, swapchain operations.",
+                Status = Grapher.Models.TaskStatus.InProgress,
+                StartDate = DateTime.UtcNow.AddDays(-10),
+                EndDate = DateTime.UtcNow.AddDays(-8),
+                ProjectId = voxels.Id,
+                CreatorId = bobomac.Id,
+                Creator = bobomac,
+                Assignments = new List<TaskAssignment> {
+                    new TaskAssignment { UserId = odin.Id }
+                }
+            };
+
+            var windowsImpl = new TaskItem {
+                Title = "Windows Implementation",
+                Description = "Win32 API integration.",
+                Status = Grapher.Models.TaskStatus.Completed,
+                StartDate = DateTime.UtcNow.AddDays(-9),
+                ParentTask = platformLayer,
+                ProjectId = voxels.Id,
+                CreatorId = bobomac.Id,
+                Creator = bobomac,
+                Assignments = new List<TaskAssignment> {
+                    new TaskAssignment { UserId = odin.Id }
+                }
+            };
+
+            var linuxImpl = new TaskItem {
+                Title = "Linux Implementation",
+                Description = "X11/Wayland API integration.",
+                Status = Grapher.Models.TaskStatus.InProgress,
+                StartDate = DateTime.UtcNow.AddDays(-9),
+                ParentTask = platformLayer,
+                ProjectId = voxels.Id,
+                CreatorId = odin.Id,
+                Creator = odin,
+                Assignments = new List<TaskAssignment> {
+                    new TaskAssignment { UserId = bobomac.Id }
+                }
+            };
+
+            var tasks = new List<TaskItem> {
+                platformLayer,
+                windowsImpl,
+                linuxImpl,
+                new TaskItem {
+                    Title = "Implement Raycasting",
+                    Description = "Core raycasting logic for voxel selection and interaction.",
+                    Status = Grapher.Models.TaskStatus.InProgress,
+                    StartDate = DateTime.UtcNow.AddDays(-5),
+                    ProjectId = voxels.Id,
+                    CreatorId = bobomac.Id,
+                    Creator = bobomac,
+                    Assignments = new List<TaskAssignment> {
+                        new TaskAssignment { UserId = odin.Id }
+                    }
+                },
+                // Grapher
+                new TaskItem {
+                    Title = "Database Schema",
+                    Description = "Initial migration and context setup.",
+                    Status = Grapher.Models.TaskStatus.Completed,
+                    StartDate = DateTime.UtcNow.AddDays(-7),
+                    EndDate = DateTime.UtcNow.AddDays(-6),
+                    ProjectId = grapher.Id,
+                    CreatorId = coq.Id,
+                    Creator = coq,
+                    Assignments = new List<TaskAssignment> {
+                        new TaskAssignment { UserId = bobomac.Id }
+                    }
+                },
+                new TaskItem {
+                    Title = "Auth System",
+                    Description = "Identity integration, roles configuration, and login pages.",
+                    Status = Grapher.Models.TaskStatus.InProgress,
+                    StartDate = DateTime.UtcNow.AddDays(-4),
+                    ProjectId = grapher.Id,
+                    CreatorId = coq.Id,
+                    Creator = coq,
+                    Assignments = new List<TaskAssignment> {
+                        new TaskAssignment { UserId = coq.Id }
+                    }
+                },
+                new TaskItem {
+                    Title = "Frontend Mockups",
+                    Description = "Figma designs for dashboard and task details.",
+                    Status = Grapher.Models.TaskStatus.NotStarted,
+                    StartDate = DateTime.UtcNow,
+                    ProjectId = grapher.Id,
+                    CreatorId = coq.Id,
+                    Creator = coq,
+                    Assignments = new List<TaskAssignment> {
+                        new TaskAssignment { UserId = zeus.Id }
+                    }
+                },
+                new TaskItem {
+                    Title = "Graph Node Rendering",
+                    Description = "Implement the visual rendering of the task nodes in the tree.",
+                    Status = Grapher.Models.TaskStatus.InProgress,
+                    StartDate = DateTime.UtcNow.AddDays(-3),
+                    ProjectId = grapher.Id,
+                    CreatorId = coq.Id,
+                    Creator = coq,
+                    Assignments = new List<TaskAssignment> {
+                        new TaskAssignment { UserId = odin.Id }
+                    }
+                },
+                // TexEd
+                new TaskItem {
+                    Title = "Syntax Highlighting",
+                    Description = "Regex-based highlighting for C# and C++.",
+                    Status = Grapher.Models.TaskStatus.InProgress,
+                    StartDate = DateTime.UtcNow.AddDays(-2),
+                    ProjectId = texed.Id,
+                    CreatorId = bobomac.Id,
+                    Creator = bobomac,
+                    Assignments = new List<TaskAssignment> {
+                        new TaskAssignment { UserId = coq.Id }
+                    }
+                }
+            };
+
+            context.TaskItems.AddRange(tasks);
+            await context.SaveChangesAsync();
         }
     }
 }
