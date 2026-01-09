@@ -185,7 +185,7 @@ namespace Grapher.Data
                 new TaskItem {
                     Title = "Implement Raycasting",
                     Description = "Core raycasting logic for voxel selection and interaction.",
-                    Status = Grapher.Models.TaskStatus.InProgress,
+                    Status = Grapher.Models.TaskStatus.NotStarted,
                     StartDate = DateTime.UtcNow.AddDays(-5),
                     ProjectId = voxels.Id,
                     CreatorId = bobomac.Id,

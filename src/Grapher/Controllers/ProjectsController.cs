@@ -83,6 +83,8 @@ namespace Grapher.Controllers
                     .ThenInclude(pm => pm.User)
                 .Include(p => p.AiSummary)
                 .Include(p => p.Tasks)
+                    .ThenInclude(t => t.Assignments)
+                        .ThenInclude(a => a.User)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
             if (project == null)

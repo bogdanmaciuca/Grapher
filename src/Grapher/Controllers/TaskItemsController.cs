@@ -40,8 +40,30 @@ namespace Grapher.Controllers
         }
 
         // GET: TaskItems
-        public async Task<IActionResult> Index(int? page, int? pageSize)
+        public async Task<IActionResult> Index(
+            string sortOrder,
+            string currentFilter,
+            string searchString,
+            Grapher.Models.TaskStatus? statusFilter,
+            int? page,
+            int? pageSize)
         {
+            ViewData["CurrentSort"] = sortOrder;
+            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "title_desc" : "";
+            ViewData["DateSortParm"] = sortOrder == "date_asc" ? "date_desc" : "date_asc";
+            ViewData["StatusFilter"] = statusFilter;
+
+            if (searchString != null)
+            {
+                page = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
+            ViewData["CurrentFilter"] = searchString;
+
             var currentUserId = _userManager.GetUserId(User);
             var isAdmin = User.IsInRole(_roles.AdminRole);
 
@@ -74,12 +96,43 @@ namespace Grapher.Controllers
                 return Forbid();
             }
 
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                tasksQuery = tasksQuery.Where(s => s.Title.ToUpper().Contains(searchString.ToUpper())
+                                       || (s.Description != null && s.Description.ToUpper().Contains(searchString.ToUpper())));
+            }
+
+            if (statusFilter.HasValue)
+            {
+                tasksQuery = tasksQuery.Where(t => t.Status == statusFilter.Value);
+            }
+
+            switch (sortOrder)
+            {
+                case "title_desc":
+                    tasksQuery = tasksQuery.OrderByDescending(s => s.Title);
+                    break;
+                case "title_asc": // explicit param
+                case "title":
+                    tasksQuery = tasksQuery.OrderBy(s => s.Title);
+                    break;
+                case "date_asc":
+                    tasksQuery = tasksQuery.OrderBy(s => s.StartDate);
+                    break;
+                case "date_desc":
+                    tasksQuery = tasksQuery.OrderByDescending(s => s.StartDate);
+                    break;
+                case "status":
+                     tasksQuery = tasksQuery.OrderBy(s => s.Status);
+                     break;
+                default: // date_desc default
+                    tasksQuery = tasksQuery.OrderByDescending(s => s.StartDate).ThenByDescending(t => t.Id);
+                    break;
+            }
+
             // pagination defaults
             var pageNumber = page ?? 1;
             var size = pageSize.HasValue && pageSize.Value > 0 ? pageSize.Value : 10;
-
-            // deterministic ordering
-            tasksQuery = tasksQuery.OrderByDescending(t => t.StartDate).ThenByDescending(t => t.Id);
 
             var paged = await Models.PaginatedList<TaskItem>.CreateAsync(tasksQuery, pageNumber, size);
             ViewData["PageSize"] = size;
