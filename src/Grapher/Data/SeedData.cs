@@ -1,379 +1,152 @@
+using Grapher.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Grapher.Models;
+using Microsoft.Extensions.Options;
+using Grapher.Configuration;
 
 namespace Grapher.Data
 {
     public static class SeedData
     {
-        public static async Task Initialize(IServiceProvider serviceProvider)
-        {
-            // get a logger early so we can report problems
-            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-            var logger = loggerFactory.CreateLogger("SeedData");
+        public static async Task Initialize(IServiceProvider serviceProvider) {
+            using var scope = serviceProvider.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            var appRoles = scope.ServiceProvider.GetRequiredService<IOptions<AppRoles>>().Value;
 
-            using (var context = new ApplicationDbContext(
-                serviceProvider.GetRequiredService<DbContextOptions<ApplicationDbContext>>()))
+            // Ensure roles exist
+            if (!await roleManager.RoleExistsAsync(appRoles.AdminRole))
             {
-                try
-                {
-                    // Prefer migrations when using EF migrations
-                    await context.Database.MigrateAsync();
-                }
-                catch (Exception ex)
-                {
-                    // fall back but log — this helps diagnose local dev issues
-                    logger.LogWarning(ex, "Migration failed, falling back to EnsureCreated()");
-                    context.Database.EnsureCreated();
-                }
-
-                var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-                var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-
-                // ===== SEED ROLES =====
-                await EnsureRoleAsync(roleManager, "Administrator");
-                await EnsureRoleAsync(roleManager, "Member");
-
-                // ===== SEED TEST USERS =====
-
-                // Admin User
-                await SeedAdminUserAsync(userManager, "admin@grapher.com", "Admin123!");
-
-                // Regular Member Users
-                await SeedMemberUserAsync(userManager, "alice@grapher.com", "Alice", "Chen", "Alice123!");
-                await SeedMemberUserAsync(userManager, "bob@grapher.com", "Bob", "Martinez", "Bob123!");
-                await SeedMemberUserAsync(userManager, "carol@grapher.com", "Carol", "Johnson", "Carol123!");
-                await SeedMemberUserAsync(userManager, "david@grapher.com", "David", "Kumar", "David123!");
-
-                // ===== SEED USER PROFILES =====
-                await SeedUserProfilesAsync(context, userManager);
-
-                // ===== SEED SAMPLE PROJECTS =====
-                await SeedSampleProjectsAsync(context, userManager);
-
-                // ===== SEED SAMPLE TASKS =====
-                await SeedSampleTasksAsync(context, userManager);
-
-                // ===== SEED SAMPLE COMMENTS =====
-                await SeedSampleCommentsAsync(context, userManager);
-
-                // DIAGNOSTIC LOGGING: list users and projects so you can verify association
-                try
-                {
-                    var users = await userManager.Users.ToListAsync();
-                    logger.LogInformation("Seeded users ({Count}):", users.Count);
-                    foreach (var u in users)
-                    {
-                        logger.LogInformation("  User: {Email} Id: {Id}", u.Email, u.Id);
-                    }
-
-                    var projects = await context.Projects.AsNoTracking().ToListAsync();
-                    logger.LogInformation("Seeded projects ({Count}):", projects.Count);
-                    foreach (var p in projects)
-                    {
-                        var organizer = await userManager.FindByIdAsync(p.OrganizerId);
-                        var organizerEmail = organizer?.Email ?? "(organizer id not found)";
-                        logger.LogInformation("  Project: {Title} Id: {Id} OrganizerId: {OrgId} OrganizerEmail: {OrgEmail}",
-                            p.Title, p.Id, p.OrganizerId, organizerEmail);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to write diagnostic logs after seeding.");
-                }
+                await roleManager.CreateAsync(new IdentityRole(appRoles.AdminRole));
             }
-        }
-
-        /// <summary>
-        /// Seeds an Administrator user
-        /// </summary>
-        private static async Task SeedAdminUserAsync(UserManager<ApplicationUser> userManager, string email, string password)
-        {
-            var existingUser = await userManager.FindByEmailAsync(email);
-
-            if (existingUser == null)
+            if (!await roleManager.RoleExistsAsync(appRoles.MemberRole))
             {
-                var adminUser = new ApplicationUser
-                {
-                    UserName = email,
-                    Email = email,
-                    EmailConfirmed = true,
-                    IsActive = true,
-                    IsGuest = false,
-                    AcceptsTerms = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                var result = await userManager.CreateAsync(adminUser, password);
-
-                if (result.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(adminUser, "Administrator");
-                }
+                await roleManager.CreateAsync(new IdentityRole(appRoles.MemberRole));
             }
-        }
 
-        /// Seeds a regular Member user
-        private static async Task SeedMemberUserAsync(UserManager<ApplicationUser> userManager, string email, string firstName, string lastName, string password)
-        {
-            var existingUser = await userManager.FindByEmailAsync(email);
+            // Nuke the fuckin' thing (order matters btw)
+            if (context.TaskItems.Any()) { context.TaskItems.RemoveRange(context.TaskItems); }
+            if (context.Projects.Any()) { context.Projects.RemoveRange(context.Projects); }
+            await context.SaveChangesAsync();
+            foreach (var user in userManager.Users.ToList()) { await userManager.DeleteAsync(user); }
 
-            if (existingUser == null)
+            // Create human life
+            var admin = new ApplicationUser {
+                UserName = "Admin",
+                Email = "admin@grapher.com",
+                EmailConfirmed = true
+            };
+            var result = await userManager.CreateAsync(admin, "Password123!");
+            if (result.Succeeded)
             {
-                var memberUser = new ApplicationUser
-                {
-                    UserName = email,
-                    Email = email,
-                    EmailConfirmed = true,
-                    IsActive = true,
-                    IsGuest = false,
-                    AcceptsTerms = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                var result = await userManager.CreateAsync(memberUser, password);
-
-                if (result.Succeeded)
-                {
-                    await userManager.AddToRoleAsync(memberUser, "Member");
-                }
+                await userManager.AddToRoleAsync(admin, appRoles.AdminRole);
             }
-        }
+            // if (!result.Succeeded) {
+            //     Console.WriteLine("Seed failed!");
+            // }
 
-        /// Seeds user profiles for all users
-        private static async Task SeedUserProfilesAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
-        {
-            var users = await userManager.Users.ToListAsync();
+            var bobomac = new ApplicationUser {
+                UserName = "BoboMac",
+                Email = "bobomac@gmail.com",
+                EmailConfirmed = true
+            };
+            await userManager.CreateAsync(bobomac, "Password123!");
 
-            foreach (var user in users)
-            {
-                var existingProfile = await context.UserProfiles.FirstOrDefaultAsync(up => up.UserId == user.Id);
+            var coq = new ApplicationUser {
+                UserName = "Coq",
+                Email = "coq@gmail.com",
+                EmailConfirmed = true
+            };
+            await userManager.CreateAsync(coq, "Password123!");
 
-                if (existingProfile == null)
-                {
-                    var (firstName, lastName, jobTitle) = ExtractUserInfo(user.Email ?? "user@example.com");
+            var odin = new ApplicationUser {
+                UserName = "Odin",
+                Email = "odin@gmail.com",
+                EmailConfirmed = true
+            };
+            await userManager.CreateAsync(odin, "Password123!");
 
-                    var profile = new UserProfile
-                    {
-                        UserId = user.Id,
-                        FirstName = firstName,
-                        LastName = lastName,
-                        JobTitle = jobTitle,
-                        UsesDarkMode = false
-                    };
-
-                    context.UserProfiles.Add(profile);
-                }
-            }
+            var zeus = new ApplicationUser {
+                UserName = "Zeus",
+                Email = "zeus@gmail.com",
+                EmailConfirmed = true
+            };
+            await userManager.CreateAsync(zeus, "Password123!");
 
             await context.SaveChangesAsync();
-        }
 
-        /// <summary>
-        /// Seeds sample projects (organized by different users)
-        /// </summary>
-        private static async Task SeedSampleProjectsAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
-        {
-            // Only seed if no projects exist
-            if (await context.Projects.AnyAsync())
-            {
-                return;
-            }
-
-            var referenceDate = new DateTime(2025, 11, 03, 0, 0, 0, DateTimeKind.Utc);
-            var users = await userManager.Users.ToListAsync();
-
-            if (users.Count < 2)
-            {
-                return;
-            }
-
-            // Alice and Bob will be organizers
-            var alice = await userManager.FindByEmailAsync("alice@grapher.com");
-            var bob = await userManager.FindByEmailAsync("bob@grapher.com");
-
-            // if specific users not found fall back to first two users
-            var aliceId = alice?.Id ?? users[0].Id;
-            var bobId = bob?.Id ?? (users.Count > 1 ? users[1].Id : users[0].Id);
-
-            var projects = new[]
-            {
-                new Project
-                {
-                    Title = "Customer Portal Redesign",
-                    Description = "Modernize the customer-facing portal with improved UI/UX and accessibility features.",
-                    CreatedAt = referenceDate.AddDays(-30),
-                    OrganizerId = aliceId
-                },
-                new Project
-                {
-                    Title = "API Performance Optimization",
-                    Description = "Improve API response times and scalability through database optimization and caching strategies.",
-                    CreatedAt = referenceDate.AddDays(-20),
-                    OrganizerId = bobId
-                },
-                new Project
-                {
-                    Title = "Mobile App MVP",
-                    Description = "Develop a minimum viable product for our mobile application focusing on core features.",
-                    CreatedAt = referenceDate.AddDays(-15),
-                    OrganizerId = aliceId
-                }
+            // Create endeavours
+            var voxels = new Project {
+                Title = "Voxel engine",
+                Description = "Engine featuring easily modifiable terrain and smooth meshing which supports sharp features",
+                CreatedAt = DateTime.UtcNow.AddDays(-5),
+                OrganizerId = bobomac.Id,
             };
 
-            context.Projects.AddRange(projects);
-            await context.SaveChangesAsync();
-        }
-
-        /// Seeds sample tasks for projects
-        private static async Task SeedSampleTasksAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
-        {
-            // Only seed if no tasks exist
-            if (await context.TaskItems.AnyAsync())
-            {
-                return;
-            }
-
-            var referenceDate = new DateTime(2025, 11, 03, 0, 0, 0, DateTimeKind.Utc);
-            var projects = await context.Projects.ToListAsync();
-            var adminUser = await userManager.FindByEmailAsync("admin@grapher.com");
-
-            if (!projects.Any() || adminUser == null)
-            {
-                return;
-            }
-
-            var tasks = new[]
-            {
-                new TaskItem
-                {
-                    Title = "Design mockups",
-                    Description = "Create high-fidelity mockups for all pages",
-                    ProjectId = projects[0].Id,
-                    Status = Models.TaskStatus.InProgress,
-                    StartDate = referenceDate.AddDays(-25),
-                    EndDate = referenceDate.AddDays(5),
-                    CreatorId = adminUser.Id,
-                    Creator = adminUser
-                },
-                new TaskItem
-                {
-                    Title = "Implement authentication",
-                    Description = "Set up OAuth 2.0 and JWT tokens",
-                    ProjectId = projects[0].Id,
-                    Status = Models.TaskStatus.NotStarted,
-                    StartDate = referenceDate.AddDays(-20),
-                    EndDate = referenceDate.AddDays(10),
-                    CreatorId = adminUser.Id,
-                    Creator = adminUser
-                },
-                new TaskItem
-                {
-                    Title = "Database optimization",
-                    Description = "Analyze and optimize slow queries",
-                    ProjectId = projects[1].Id,
-                    Status = Models.TaskStatus.InProgress,
-                    StartDate = referenceDate.AddDays(-18),
-                    EndDate = referenceDate.AddDays(3),
-                    CreatorId = adminUser.Id,
-                    Creator = adminUser
-                },
-                new TaskItem
-                {
-                    Title = "Setup caching layer",
-                    Description = "Implement Redis for distributed caching",
-                    ProjectId = projects[1].Id,
-                    Status = Models.TaskStatus.Completed,
-                    StartDate = referenceDate.AddDays(-15),
-                    EndDate = referenceDate.AddDays(-5),
-                    CreatorId = adminUser.Id,
-                    Creator = adminUser
-                },
-                new TaskItem
-                {
-                    Title = "Design app interface",
-                    Description = "Create UI/UX designs for mobile app",
-                    ProjectId = projects[2].Id,
-                    Status = Models.TaskStatus.InProgress,
-                    StartDate = referenceDate.AddDays(-12),
-                    EndDate = referenceDate.AddDays(8),
-                    CreatorId = adminUser.Id,
-                    Creator = adminUser
-                }
+            var grapher = new Project {
+                Title = "Grapher",
+                Description = "Task management website for increased productivity, featuring a tree-like hierarchical structure of the project",
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                OrganizerId = coq.Id
             };
 
-            context.TaskItems.AddRange(tasks);
-            await context.SaveChangesAsync();
-        }
-
-        /// Seeds sample comments on tasks
-        private static async Task SeedSampleCommentsAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
-        {
-            // Only seed if no comments exist
-            if (await context.Comments.AnyAsync())
-            {
-                return;
-            }
-
-            var referenceDate = new DateTime(2025, 11, 03, 0, 0, 0, DateTimeKind.Utc);
-            var tasks = await context.TaskItems.ToListAsync();
-            var users = await userManager.Users.ToListAsync();
-
-            if (tasks.Count < 3 || users.Count < 3)
-            {
-                return;
-            }
-
-            var comments = new[]
-            {
-                new Comment
-                {
-                    TaskId = tasks[0].Id,
-                    AuthorId = users[0].Id,
-                    Content = "Great start! The mockups look amazing. Ready for implementation.",
-                    PostedAt = referenceDate.AddDays(-20)
-                },
-                new Comment
-                {
-                    TaskId = tasks[0].Id,
-                    AuthorId = users[1].Id,
-                    Content = "I reviewed the designs. Minor adjustments needed in the navigation bar.",
-                    PostedAt = referenceDate.AddDays(-18)
-                },
-                new Comment
-                {
-                    TaskId = tasks[2].Id,
-                    AuthorId = users[2].Id,
-                    Content = "Query optimization is complete. Performance improved by 60%.",
-                    PostedAt = referenceDate.AddDays(-10)
-                }
+            var texed = new Project {
+                Title = "TexEd",
+                Description = "GUI text editor with vim motions and opinionated defaults",
+                CreatedAt = DateTime.UtcNow.AddDays(-3),
+                OrganizerId = bobomac.Id
             };
 
-            context.Comments.AddRange(comments);
+            context.Projects.AddRange(voxels, grapher, texed);
             await context.SaveChangesAsync();
-        }
 
-        /// Helper to extract user info from email
-        private static (string firstName, string lastName, string jobTitle) ExtractUserInfo(string email)
-        {
-            var parts = email.Split('@')[0].Split('.');
+            // Assign workforce to said endeavours
+            var memberships = new List<ProjectMember> {
+                // Voxels
+                new ProjectMember {
+                    ProjectId = voxels.Id,
+                    UserId = odin.Id,
+                    Role = "Member",
+                },
+                // Grapher
+                new ProjectMember {
+                    ProjectId = grapher.Id,
+                    UserId = bobomac.Id,
+                    Role = "Member",
+                },
+                new ProjectMember {
+                    ProjectId = grapher.Id,
+                    UserId = odin.Id,
+                    Role = "Member",
+                },
+                new ProjectMember {
+                    ProjectId = grapher.Id,
+                    UserId = zeus.Id,
+                    Role = "Member",
+                },
+                // TexEd
+                new ProjectMember {
+                    ProjectId = texed.Id,
+                    UserId = coq.Id,
+                    Role = "Member",
+                },
+            };
+            context.ProjectMembers.AddRange(memberships);
+            await context.SaveChangesAsync();
 
-            var firstName = parts.Length > 0 ? char.ToUpper(parts[0][0]) + parts[0].Substring(1) : "User";
-            var lastName = parts.Length > 1 ? char.ToUpper(parts[1][0]) + parts[1].Substring(1) : "";
-            var jobTitle = email.Contains("admin") ? "Administrator" : "Developer";
-
-            return (firstName, lastName, jobTitle);
-        }
-
-        /// Ensures a role exists
-        private static async Task EnsureRoleAsync(RoleManager<IdentityRole> roleManager, string roleName)
-        {
-            var roleExists = await roleManager.RoleExistsAsync(roleName);
-            if (!roleExists)
-            {
-                await roleManager.CreateAsync(new IdentityRole(roleName));
-            }
+            // // Tasks
+            // var tasks = new List<TaskItem> {
+            //     // Voxels
+            //     new TaskItem {
+            //         Title = "Create platform layer",
+            //         Description = "Create API for: window creation, event polling, window resizing, swapchain operations.",
+            //         Status = Grapher.Models.TaskStatus.Completed,
+            //         StartDate = DateTime.UtcNow.AddDays(-9),
+            //         EndDate = DateTime.UtcNow.AddDays(-8),
+            //         CreatorId = bobomac.Id,
+            //     }
+            // }
         }
     }
 }
