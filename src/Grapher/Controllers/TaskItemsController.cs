@@ -255,6 +255,10 @@ namespace Grapher.Controllers
 
                 _context.Add(taskItem);
                 await _context.SaveChangesAsync();
+
+                // Update parent status recursively
+                await UpdateParentStatusesRecursive(taskItem.ParentTaskId);
+
                 return RedirectToAction(nameof(Index));
             }
 
@@ -401,6 +405,9 @@ namespace Grapher.Controllers
 
                     _context.Update(existingTask);
                     await _context.SaveChangesAsync();
+                    
+                    // Update parent status recursively
+                    await UpdateParentStatusesRecursive(existingTask.ParentTaskId);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -466,6 +473,9 @@ namespace Grapher.Controllers
 
                 _context.TaskItems.Remove(taskItem);
                 await _context.SaveChangesAsync();
+                
+                // Update parent status recursively
+                await UpdateParentStatusesRecursive(taskItem.ParentTaskId);
             }
 
             return RedirectToAction(nameof(Index));
@@ -804,6 +814,48 @@ namespace Grapher.Controllers
         private bool TaskItemExists(int id)
         {
             return _context.TaskItems.Any(e => e.Id == id);
+        }
+
+        private async Task UpdateParentStatusesRecursive(int? parentId)
+        {
+            if (parentId == null) return;
+
+            var parent = await _context.TaskItems
+                .Include(t => t.SubTasks)
+                .FirstOrDefaultAsync(t => t.Id == parentId);
+
+            if (parent == null) return;
+
+            var subtasks = parent.SubTasks;
+            if (!subtasks.Any()) return; // Should not happen if we just added/modified a child, but safety check.
+
+            var newStatus = parent.Status;
+
+            bool allCompleted = subtasks.All(s => s.Status == Grapher.Models.TaskStatus.Completed);
+            bool allNotStarted = subtasks.All(s => s.Status == Grapher.Models.TaskStatus.NotStarted);
+
+            if (allCompleted)
+            {
+                newStatus = Grapher.Models.TaskStatus.Completed;
+            }
+            else if (allNotStarted)
+            {
+                newStatus = Grapher.Models.TaskStatus.NotStarted;
+            }
+            else
+            {
+                newStatus = Grapher.Models.TaskStatus.InProgress;
+            }
+
+            if (newStatus != parent.Status)
+            {
+                parent.Status = newStatus;
+                _context.Update(parent);
+                await _context.SaveChangesAsync();
+                
+                // Recurse
+                await UpdateParentStatusesRecursive(parent.ParentTaskId);
+            }
         }
     }
 }
