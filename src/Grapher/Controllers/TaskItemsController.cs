@@ -56,7 +56,11 @@ namespace Grapher.Controllers
                     .ThenInclude(a => a.User)
                 .AsNoTracking();
 
-            if (!string.IsNullOrEmpty(currentUserId))
+            if (isAdmin)
+            {
+                // Admin: see all tasks
+            }
+            else if (!string.IsNullOrEmpty(currentUserId))
             {
                 // Organizers: see all tasks that belong to projects they organize
                 // Members (non-organizers): see only tasks they are assigned to
@@ -64,7 +68,7 @@ namespace Grapher.Controllers
                     (t.Project != null && t.Project.OrganizerId == currentUserId) ||
                     t.Assignments.Any(a => a.UserId == currentUserId));
             }
-            else if (!isAdmin)
+            else
             {
                 // Unauthenticated: no access
                 return Forbid();
