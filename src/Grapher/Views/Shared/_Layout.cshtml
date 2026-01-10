@@ -1,9 +1,26 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @using Grapher.Models
 @inject Microsoft.AspNetCore.Identity.UserManager<Grapher.Models.ApplicationUser> UserMgr
+@inject Grapher.Data.ApplicationDbContext Context
+
+@{
+    var initialTheme = "light";
+    if (User.Identity?.IsAuthenticated ?? false)
+    {
+        var userId = UserMgr.GetUserId(User);
+        if (userId != null)
+        {
+            var profile = await Context.UserProfiles.FindAsync(userId);
+            if (profile != null && profile.UsesDarkMode)
+            {
+                initialTheme = "dark";
+            }
+        }
+    }
+}
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="@initialTheme">
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,9 +30,9 @@
         <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
         <link rel="stylesheet" href="~/Grapher.styles.css" asp-append-version="true" />
     </head>
-    <body class="bg-light">
+    <body>
         <header>
-            <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
+            <nav class="navbar navbar-expand-lg border-bottom shadow-sm">
                 <div class="container-fluid">
                     <a class="navbar-brand fw-bold text-primary" asp-area="" asp-controller="Home" asp-action="Index">Grapher</a>
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
@@ -45,6 +62,12 @@
                             </li>
                         }
                         </ul>
+                        @if (User.Identity?.IsAuthenticated ?? false)
+                        {
+                            <button class="btn btn-link nav-link me-2" id="themeToggle" title="Toggle Dark Mode">
+                                <i class="bi bi-moon-fill" id="themeIcon"></i>
+                            </button>
+                        }
                         <partial name="_LoginPartial" />
                     </div>
                 </div>
@@ -59,6 +82,42 @@
         <script src="~/lib/jquery/dist/jquery.min.js"></script>
         <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
         <script src="~/js/site.js" asp-append-version="true"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const themeToggle = document.getElementById('themeToggle');
+                const themeIcon = document.getElementById('themeIcon');
+                const html = document.documentElement;
+
+                // Set initial icon based on server-rendered attribute
+                if (html.getAttribute('data-bs-theme') === 'dark') {
+                    themeIcon?.classList.replace('bi-moon-fill', 'bi-sun-fill');
+                }
+
+                if (themeToggle) {
+                    themeToggle.addEventListener('click', async () => {
+                        const currentTheme = html.getAttribute('data-bs-theme');
+                        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                        
+                        html.setAttribute('data-bs-theme', newTheme);
+                        
+                        if (newTheme === 'dark') {
+                            themeIcon.classList.replace('bi-moon-fill', 'bi-sun-fill');
+                        } else {
+                            themeIcon.classList.replace('bi-sun-fill', 'bi-moon-fill');
+                        }
+
+                        // Save to server
+                        try {
+                            await fetch('/Home/ToggleDarkMode?useDarkMode=' + (newTheme === 'dark'), {
+                                method: 'POST'
+                            });
+                        } catch (e) {
+                            console.error('Failed to save theme preference', e);
+                        }
+                    });
+                }
+            });
+        </script>
         @await RenderSectionAsync("Scripts", required: false)
     </body>
 </html>
