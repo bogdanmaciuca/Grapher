@@ -16,7 +16,7 @@ namespace Grapher.Models
         public virtual ApplicationUser? User { get; set; }
 
         [Required]
-        [StringLength(50)]
+        [StringLength(32)]
         public required string Role { get; set; }
 
         public DateTime JoinedAt { get; set; } = DateTime.UtcNow;

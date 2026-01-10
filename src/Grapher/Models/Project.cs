@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Grapher.Validation;
 
 namespace Grapher.Models
 {
@@ -9,15 +10,17 @@ namespace Grapher.Models
         public int Id { get; set; }
 
         [Required]
-        [StringLength(150)]
+        [StringLength(128)]
         public required string Title { get; set; }
 
         [Required]
+        [StringLength(1024)]
         public required string Description { get; set; }
 
         public DateTime CreatedAt { get; set; }
 
         // Optional start date (user may supply this)
+        [SensibleDate]
         public DateTime? StartDate { get; set; }
 
         [Required]

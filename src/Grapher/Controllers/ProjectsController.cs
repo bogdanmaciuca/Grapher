@@ -437,6 +437,13 @@ namespace Grapher.Controllers
                 return BadRequest("Email required");
             }
 
+            // Relaxed Regex Validation
+            if (!System.Text.RegularExpressions.Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
+            {
+                 TempData["InviteError"] = "Invalid email format.";
+                 return RedirectToAction(nameof(Details), new { id = projectId });
+            }
+
             var project = await _context.Projects
                 .Include(p => p.Members)
                 .FirstOrDefaultAsync(p => p.Id == projectId);

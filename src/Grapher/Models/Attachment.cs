@@ -9,6 +9,7 @@ namespace Grapher.Models
         public int Id { get; set; }
 
         [Required]
+        [Url]
         public required string Url { get; set; }
 
         [Required]

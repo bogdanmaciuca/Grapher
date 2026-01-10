@@ -10,13 +10,13 @@ namespace Grapher.Models
         [Required]
         public virtual ApplicationUser User { get; set; } = null!;
 
-        [StringLength(100)]
+        [StringLength(128)]
         public string? FirstName { get; set; }
 
-        [StringLength(100)]
+        [StringLength(128)]
         public string? LastName { get; set; }
 
-        [StringLength(100)]
+        [StringLength(128)]
         public string? JobTitle { get; set; }
 
         public bool UsesDarkMode { get; set; } = false;

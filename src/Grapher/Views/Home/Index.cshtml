@@ -2,14 +2,14 @@
 ViewData["Title"] = "Home Page";
 }
 
-<div class="jumbotron text-center bg-body-tertiary border-bottom shadow-sm pt-5 pb-5 mb-5">
-    <div class="container">
+<div class="jumbotron text-center bg-body-tertiary border-bottom shadow-sm pt-5 pb-5 mb-5 py-lg-5">
+    <div class="container py-5">
         <h1 class="display-3 fw-bold">Manage Projects with <span class="text-primary">Grapher</span></h1>
-    <p class="lead text-muted mt-3 mb-4">
-        The all-in-one workspace for students and developers. <br />
-        Visualize tasks, track progress, and collaborate seamlessly.
-    </p>
-    <div class="d-flex justify-content-center gap-3">
+        <p class="lead text-muted mt-4 mb-5 mx-auto" style="max-width: 700px;">
+            The all-in-one workspace for students and developers. <br />
+            Visualize tasks, track progress, and collaborate seamlessly.
+        </p>
+        <div class="d-flex justify-content-center gap-3 mt-4">
         @if (User.Identity.IsAuthenticated)
         {
         <a asp-controller="Projects" asp-action="Index" class="btn btn-primary btn-lg px-5 shadow">Go to Dashboard</a>
@@ -22,8 +22,8 @@ ViewData["Title"] = "Home Page";
     </div>
 </div>
 
-<div class="container mb-5">
-    <div class="row text-center g-4">
+<div class="container mb-5 mt-5 pt-4">
+    <div class="row text-center g-5">
 
         <div class="col-md-4">
             <div class="card h-100 border-0 shadow-hover p-3">

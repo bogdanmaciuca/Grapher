@@ -10,6 +10,7 @@ namespace Grapher.Models
 
         public virtual required Project Project { get; set; }
 
+        [StringLength(2048)]
         public string? SummaryText { get; set; }
 
         public DateTime? LastUpdated { get; set; }

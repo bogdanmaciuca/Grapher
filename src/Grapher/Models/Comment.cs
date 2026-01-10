@@ -9,6 +9,7 @@ namespace Grapher.Models
         public int Id { get; set; }
 
         [Required]
+        [StringLength(256)]
         public required string Content { get; set; }
 
         public DateTime PostedAt { get; set; } = DateTime.UtcNow;
