@@ -299,6 +299,7 @@
                         if (sourceStatus && sourceStatus !== newStatus) {
                              updateCounters(sourceStatus, newStatus);
                              updateCardStyle(draggable, newStatus);
+                             updateMermaidNode(taskId, newStatus);
                         }
 
                         try {
@@ -360,6 +361,28 @@
                 if (destBadge) {
                     let count = parseInt(destBadge.innerText);
                     destBadge.innerText = count + 1;
+                }
+            }
+
+            function updateMermaidNode(taskId, status) {
+                // Determine the new class name based on status
+                let newClass = 'notstarted';
+                if (status === 'InProgress') newClass = 'inprogress';
+                else if (status === 'Completed') newClass = 'completed';
+
+                // Find the SVG node group. Mermaid IDs are usually like "flowchart-T{taskId}-{hash}"
+                // We use a prefix selector to find it.
+                // The element we need to target for class updates is usually the group <g> having the class "node"
+                // The ID is assigned to this group.
+                const nodeIdPrefix = `flowchart-T${taskId}-`;
+                const nodeGroup = document.querySelector(`g[id^="${nodeIdPrefix}"]`);
+
+                if (nodeGroup) {
+                    // Remove existing status classes
+                    nodeGroup.classList.remove('notstarted', 'inprogress', 'completed');
+                    
+                    // Add the new status class
+                    nodeGroup.classList.add(newClass);
                 }
             }
         });

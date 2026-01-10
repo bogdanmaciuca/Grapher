@@ -3,6 +3,9 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# work in progress
+README.md
+
 # dotenv files
 .env
 
