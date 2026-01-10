@@ -25,11 +25,17 @@ namespace Grapher.Data
                 await roleManager.CreateAsync(new IdentityRole(appRoles.MemberRole));
             }
 
+            // If database is already seeded, do nothing
+            if (context.Users.Any())
+            {
+                return;
+            }
+
             // Nuke the fuckin' thing (order matters btw)
-            if (context.TaskItems.Any()) { context.TaskItems.RemoveRange(context.TaskItems); }
-            if (context.Projects.Any()) { context.Projects.RemoveRange(context.Projects); }
-            await context.SaveChangesAsync();
-            foreach (var user in userManager.Users.ToList()) { await userManager.DeleteAsync(user); }
+            // if (context.TaskItems.Any()) { context.TaskItems.RemoveRange(context.TaskItems); }
+            // if (context.Projects.Any()) { context.Projects.RemoveRange(context.Projects); }
+            // await context.SaveChangesAsync();
+            // foreach (var user in userManager.Users.ToList()) { await userManager.DeleteAsync(user); }
 
             // Create human life
             var admin = new ApplicationUser {

@@ -88,27 +88,9 @@ namespace Grapher.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Comment>()
-                .HasOne(c => c.Task)
-                .WithMany(t => t.Comments)
-                .HasForeignKey(c => c.TaskId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<Comment>()
                 .HasOne(c => c.Author)
                 .WithMany()
                 .HasForeignKey(c => c.AuthorId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<Attachment>()
-                .HasOne(a => a.Task)
-                .WithMany(t => t.Attachments)
-                .HasForeignKey(a => a.TaskId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            builder.Entity<Attachment>()
-                .HasOne(a => a.Task)
-                .WithMany()
-                .HasForeignKey(a => a.TaskId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<UserProfile>()

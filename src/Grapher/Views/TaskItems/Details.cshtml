@@ -38,6 +38,21 @@
     </div>
 </div>
 
+@if (!string.IsNullOrEmpty(attachSuccess))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @attachSuccess
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+@if (!string.IsNullOrEmpty(attachError))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @attachError
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
 <div class="row mb-4">
     <div class="col-md-8">
         <div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
@@ -195,9 +210,14 @@
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
-            <div class="card-body">
-                <h5 class="fw-bold">Attachments</h5>
+            <div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
+                <div class="card-header bg-transparent border-0 user-select-none" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#attachmentsCollapse" aria-expanded="false" aria-controls="attachmentsCollapse">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0">Attachments (@(Model.Attachments?.Count ?? 0))</h5>
+                        <span class="text-muted">▼</span>
+                    </div>
+                </div>
+                <div id="attachmentsCollapse" class="collapse">                <div class="card-body pt-0">
 
                 @if (Model.Attachments != null && Model.Attachments.Any())
                 {
@@ -243,6 +263,7 @@
                             <div class="flex-grow-1">
                                 <div>
                                     <strong>@(string.Equals(a.Type, "link", StringComparison.OrdinalIgnoreCase) ? "Link" : (a.Type?.ToUpperInvariant() ?? "FILE"))</strong>
+                                    <span class="small text-muted ms-2">Uploaded by @(a.Uploader?.UserName ?? "Unknown")</span>
                                 </div>
 
                                 <div class="mt-2">
@@ -295,12 +316,19 @@
                 }
             </div>
         </div>
+    </div>
 
-        <div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
-            <div class="card-body">
-                <h5 class="fw-bold">Comments</h5>
+    <div class="card border-0 shadow-sm mb-3" style="border-radius:12px;">
+        <div class="card-header bg-transparent border-0 user-select-none" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#commentsCollapse" aria-expanded="false" aria-controls="commentsCollapse">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="fw-bold mb-0">Comments (@(Model.Comments?.Count ?? 0))</h5>
+                <span class="text-muted">▼</span>
+            </div>
+        </div>
+        <div id="commentsCollapse" class="collapse">
+            <div class="card-body pt-0">
 
-                @if (Model.Comments != null && Model.Comments.Any())
+            @if (Model.Comments != null && Model.Comments.Any())
                {
                 <ul class="list-group mb-3">
                     @foreach (var c in Model.Comments.OrderByDescending(cm => cm.PostedAt))
@@ -356,5 +384,6 @@
                }
             </div>
         </div>
+    </div>
     </div>
 </div>

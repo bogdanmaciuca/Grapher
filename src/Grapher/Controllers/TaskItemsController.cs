@@ -153,6 +153,7 @@ namespace Grapher.Controllers
                 .Include(t => t.Assignments)
                     .ThenInclude(a => a.User)
                 .Include(t => t.Attachments)
+                    .ThenInclude(a => a.Uploader)
                 .Include(t => t.ParentTask)
                 .Include(t => t.SubTasks)
                     .ThenInclude(st => st.Creator)
@@ -247,7 +248,10 @@ namespace Grapher.Controllers
         public async Task<IActionResult> Create([Bind("Id,ProjectId,Title,Description,Status,StartDate,EndDate,ParentTaskId")] TaskItem taskItem, string[] selectedUsers)
         {
             var currentUser = await _userManager.GetUserAsync(User);
-            if (currentUser == null || currentUser.IsGuest) return Forbid();
+            if (currentUser == null || currentUser.IsGuest)
+            {
+                return Forbid();
+            }
 
             // validate that user can create tasks for the selected project
             var project = await _context.Projects
@@ -354,7 +358,10 @@ namespace Grapher.Controllers
 
             // permission: organizer of the project can edit any task in project;
             // non-organizer member can edit only own tasks
-            if (!isAdmin && !isOrganizer && !isCreator) return Forbid();
+            if (!isAdmin && !isOrganizer && !isCreator)
+            {
+                return Forbid();
+            }
 
             ViewData["ProjectId"] = new SelectList(_context.Projects, "Id", "Title", taskItem.ProjectId);
 
@@ -396,7 +403,10 @@ namespace Grapher.Controllers
             var isOrganizer = existingTask.Project != null && existingTask.Project.OrganizerId == currentUserId;
             var isCreator = existingTask.CreatorId == currentUserId;
 
-            if (!isAdmin && !isOrganizer && !isCreator) return Forbid();
+            if (!isAdmin && !isOrganizer && !isCreator)
+            {
+                return Forbid();
+            }
 
             if (existingTask.Project != null && existingTask.Project.StartDate.HasValue && taskItem.StartDate < existingTask.Project.StartDate.Value)
             {
@@ -512,7 +522,10 @@ namespace Grapher.Controllers
             var isProjectOrganizer = taskItem.Project != null && taskItem.Project.OrganizerId == currentUserId;
             var isCreator = taskItem.CreatorId == currentUserId;
 
-            if (!isAdmin && !isProjectOrganizer && !isCreator) return Forbid();
+            if (!isAdmin && !isProjectOrganizer && !isCreator)
+            {
+                return Forbid();
+            }
 
             return View(taskItem);
         }
@@ -532,7 +545,10 @@ namespace Grapher.Controllers
                 var project = await _context.Projects.FindAsync(taskItem.ProjectId);
                 var isProjectOrganizer = project != null && project.OrganizerId == currentUserId;
 
-                if (!isAdmin && !isCreator && !isProjectOrganizer) return Forbid();
+                if (!isAdmin && !isCreator && !isProjectOrganizer)
+                {
+                    return Forbid();
+                }
 
                 _context.TaskItems.Remove(taskItem);
                 await _context.SaveChangesAsync();
@@ -892,7 +908,7 @@ namespace Grapher.Controllers
             if (parent == null) return;
 
             var subtasks = parent.SubTasks;
-            if (!subtasks.Any()) return; // Should not happen if we just added/modified a child, but safety check.
+            if (subtasks.Count == 0) return; // Should not happen if we just added/modified a child, but safety check.
 
             var newStatus = parent.Status;
 
