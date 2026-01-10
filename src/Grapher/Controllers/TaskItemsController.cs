@@ -897,6 +897,39 @@ namespace Grapher.Controllers
             return _context.TaskItems.Any(e => e.Id == id);
         }
 
+        // POST: TaskItems/UpdateStatus
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> UpdateStatus(int id, Grapher.Models.TaskStatus status)
+        {
+            var taskItem = await _context.TaskItems
+                .Include(t => t.Project)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (taskItem == null) return NotFound();
+
+            var currentUserId = _userManager.GetUserId(User);
+            var isAdmin = User.IsInRole(_roles.AdminRole);
+            var isOrganizer = taskItem.Project != null && taskItem.Project.OrganizerId == currentUserId;
+            var isAssigned = await _context.TaskAssignments.AnyAsync(a => a.TaskId == id && a.UserId == currentUserId);
+
+            // Allow update if admin, organizer, or assigned to task
+            if (!isAdmin && !isOrganizer && !isAssigned)
+            {
+                return Forbid();
+            }
+
+            taskItem.Status = status;
+            _context.Update(taskItem);
+            await _context.SaveChangesAsync();
+
+            // Update parent status recursively
+            await UpdateParentStatusesRecursive(taskItem.ParentTaskId);
+
+            return Ok();
+        }
+
         private async Task UpdateParentStatusesRecursive(int? parentId)
         {
             if (parentId == null) return;

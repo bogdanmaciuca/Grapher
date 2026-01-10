@@ -127,14 +127,14 @@
         <div class="p-3 bg-light rounded shadow-sm h-100">
             <h5 class="fw-bold text-secondary border-bottom pb-2 mb-3 d-flex justify-content-between">
                 To Do 
-                <span class="badge bg-secondary rounded-pill">@(Model.Tasks?.Count(t => t.Status == Grapher.Models.TaskStatus.NotStarted) ?? 0)</span>
+                <span id="badge-NotStarted" class="badge bg-secondary rounded-pill">@(Model.Tasks?.Count(t => t.Status == Grapher.Models.TaskStatus.NotStarted) ?? 0)</span>
             </h5>
-            <div class="kanban-column">
+            <div class="kanban-column" data-status="NotStarted" style="min-height: 200px;">
                 @if (Model.Tasks != null)
                 {
                     foreach (var task in Model.Tasks.Where(t => t.Status == Grapher.Models.TaskStatus.NotStarted))
                     {
-                        <div class="card mb-2 border-0 shadow-sm task-card">
+                        <div class="card mb-2 border-0 shadow-sm task-card" draggable="true" data-task-id="@task.Id">
                             <div class="card-body p-3">
                                 <h6 class="card-title fw-bold"><a asp-controller="TaskItems" asp-action="Details" asp-route-id="@task.Id" class="text-decoration-none text-dark stretched-link">@task.Title</a></h6>
                                 <p class="card-text text-muted small text-truncate">@task.Description</p>
@@ -153,14 +153,14 @@
         <div class="p-3 bg-light rounded shadow-sm h-100">
             <h5 class="fw-bold text-warning border-bottom pb-2 mb-3 d-flex justify-content-between">
                 In Progress
-                <span class="badge bg-warning text-dark rounded-pill">@(Model.Tasks?.Count(t => t.Status == Grapher.Models.TaskStatus.InProgress) ?? 0)</span>
+                <span id="badge-InProgress" class="badge bg-warning text-dark rounded-pill">@(Model.Tasks?.Count(t => t.Status == Grapher.Models.TaskStatus.InProgress) ?? 0)</span>
             </h5>
-             <div class="kanban-column">
+             <div class="kanban-column" data-status="InProgress" style="min-height: 200px;">
                 @if (Model.Tasks != null)
                 {
                     foreach (var task in Model.Tasks.Where(t => t.Status == Grapher.Models.TaskStatus.InProgress))
                     {
-                        <div class="card mb-2 border-0 shadow-sm task-card border-start border-4 border-warning">
+                        <div class="card mb-2 border-0 shadow-sm task-card border-start border-4 border-warning" draggable="true" data-task-id="@task.Id">
                              <div class="card-body p-3">
                                 <h6 class="card-title fw-bold"><a asp-controller="TaskItems" asp-action="Details" asp-route-id="@task.Id" class="text-decoration-none text-dark stretched-link">@task.Title</a></h6>
                                 <p class="card-text text-muted small text-truncate">@task.Description</p>
@@ -179,14 +179,14 @@
         <div class="p-3 bg-light rounded shadow-sm h-100">
              <h5 class="fw-bold text-success border-bottom pb-2 mb-3 d-flex justify-content-between">
                 Done
-                <span class="badge bg-success rounded-pill">@(Model.Tasks?.Count(t => t.Status == Grapher.Models.TaskStatus.Completed) ?? 0)</span>
+                <span id="badge-Completed" class="badge bg-success rounded-pill">@(Model.Tasks?.Count(t => t.Status == Grapher.Models.TaskStatus.Completed) ?? 0)</span>
             </h5>
-             <div class="kanban-column">
+             <div class="kanban-column" data-status="Completed" style="min-height: 200px;">
                 @if (Model.Tasks != null)
                 {
                     foreach (var task in Model.Tasks.Where(t => t.Status == Grapher.Models.TaskStatus.Completed))
                     {
-                        <div class="card mb-2 border-0 shadow-sm task-card border-start border-4 border-success">
+                        <div class="card mb-2 border-0 shadow-sm task-card border-start border-4 border-success" draggable="true" data-task-id="@task.Id">
                              <div class="card-body p-3">
                                 <h6 class="card-title fw-bold"><a asp-controller="TaskItems" asp-action="Details" asp-route-id="@task.Id" class="text-decoration-none text-dark stretched-link">@task.Title</a></h6>
                                 <p class="card-text text-muted small text-truncate">@task.Description</p>
@@ -249,5 +249,119 @@
             summaryElement.innerHTML = marked.parse(rawMarkdown);
             summaryElement.style.whiteSpace = 'normal'; 
         }
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const draggables = document.querySelectorAll('.task-card[draggable="true"]');
+            const columns = document.querySelectorAll('.kanban-column');
+
+            draggables.forEach(draggable => {
+                draggable.addEventListener('dragstart', () => {
+                    draggable.classList.add('dragging');
+                    draggable.style.opacity = '0.5';
+                    const sourceColumn = draggable.closest('.kanban-column');
+                    if (sourceColumn) {
+                        draggable.setAttribute('data-source-status', sourceColumn.getAttribute('data-status'));
+                    }
+                });
+
+                draggable.addEventListener('dragend', () => {
+                    draggable.classList.remove('dragging');
+                    draggable.style.opacity = '1';
+                });
+            });
+
+            columns.forEach(column => {
+                column.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(column, e.clientY);
+                    const draggable = document.querySelector('.dragging');
+                    if (draggable) {
+                        if (afterElement == null) {
+                            column.appendChild(draggable);
+                        } else {
+                            column.insertBefore(draggable, afterElement);
+                        }
+                    }
+                });
+
+                column.addEventListener('drop', async e => {
+                    const draggable = document.querySelector('.dragging');
+                    if (!draggable) return;
+                    
+                    const newStatus = column.getAttribute('data-status');
+                    const taskId = draggable.getAttribute('data-task-id');
+                    const sourceStatus = draggable.getAttribute('data-source-status');
+                    
+                    // Call API to update status
+                    if (newStatus && taskId) {
+                        // Optimistic update for counters if status changed
+                        if (sourceStatus && sourceStatus !== newStatus) {
+                             updateCounters(sourceStatus, newStatus);
+                             updateCardStyle(draggable, newStatus);
+                        }
+
+                        try {
+                            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                            const response = await fetch('/TaskItems/UpdateStatus', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded',
+                                    'RequestVerificationToken': token
+                                },
+                                body: `id=${taskId}&status=${newStatus}`
+                            });
+
+                            if (!response.ok) {
+                                alert('Failed to update task status.');
+                                window.location.reload(); 
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            alert('Error updating task status.');
+                            window.location.reload();
+                        }
+                    }
+                });
+            });
+
+            function getDragAfterElement(container, y) {
+                const draggableElements = [...container.querySelectorAll('.task-card:not(.dragging)')];
+
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            function updateCardStyle(card, status) {
+                card.classList.remove('border-start', 'border-4', 'border-warning', 'border-success');
+                if (status === 'InProgress') {
+                    card.classList.add('border-start', 'border-4', 'border-warning');
+                } else if (status === 'Completed') {
+                    card.classList.add('border-start', 'border-4', 'border-success');
+                }
+            }
+
+            function updateCounters(sourceStatus, newStatus) {
+                const sourceBadge = document.getElementById(`badge-${sourceStatus}`);
+                const destBadge = document.getElementById(`badge-${newStatus}`);
+                
+                if (sourceBadge) {
+                    let count = parseInt(sourceBadge.innerText);
+                    sourceBadge.innerText = Math.max(0, count - 1);
+                }
+                
+                if (destBadge) {
+                    let count = parseInt(destBadge.innerText);
+                    destBadge.innerText = count + 1;
+                }
+            }
+        });
     </script>
 }
