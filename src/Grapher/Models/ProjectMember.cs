@@ -1,8 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace Grapher.Models
 {
+    [PrimaryKey(nameof(ProjectId), nameof(UserId))]
     public class ProjectMember
     {
         public int ProjectId { get; set; }

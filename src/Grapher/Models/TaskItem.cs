@@ -19,9 +19,10 @@ namespace Grapher.Models
         public DateTime StartDate { get; set; } = DateTime.UtcNow;
         public DateTime? EndDate { get; set; }
 
+        [Required]
         public int ProjectId { get; set; }
         [ForeignKey("ProjectId")]
-        public virtual Project? Project { get; set; }
+        public virtual Project Project { get; set; } = null!;
 
         /// Parent can be null (root tasks)
         public int? ParentTaskId { get; set; }
@@ -34,7 +35,7 @@ namespace Grapher.Models
         [Required]
         public required string CreatorId { get; set; }
         [ForeignKey("CreatorId")]
-        public virtual required ApplicationUser Creator { get; set; }
+        public virtual ApplicationUser? Creator { get; set; }
 
         public virtual ICollection<TaskAssignment> Assignments { get; set; } = new List<TaskAssignment>();
         public virtual ICollection<Comment> Comments { get; set; } = new List<Comment>();

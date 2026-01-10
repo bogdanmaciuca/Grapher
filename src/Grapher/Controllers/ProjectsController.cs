@@ -48,18 +48,14 @@ namespace Grapher.Controllers
 
             IQueryable<Project> projectsQuery = _context.Projects.Include(p => p.Organizer);
 
-            if (isAdmin)
-            {
-                // Admin: all projects
-            }
-            else if (!string.IsNullOrEmpty(currentUserId))
+            if (!string.IsNullOrEmpty(currentUserId))
             {
                 // Authenticated non-admin: only projects they organize or are a member of
                 projectsQuery = projectsQuery.Where(p =>
                     p.OrganizerId == currentUserId ||
                     p.Members.Any(m => m.UserId == currentUserId));
             }
-            else
+            else if (!isAdmin)
             {
                 // Unauthenticated: no access
                 return Forbid();

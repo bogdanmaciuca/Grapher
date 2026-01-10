@@ -17,6 +17,6 @@ namespace Grapher.Models
 
         public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
 
-        public string? AssignedByUserId { get; set; }
+        public required string AssignedByUserId { get; set; }
     }
 }

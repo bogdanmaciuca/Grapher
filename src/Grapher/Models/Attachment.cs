@@ -14,8 +14,14 @@ namespace Grapher.Models
         [Required]
         public required string Type { get; set; }
 
+        [Required]
         public int TaskId { get; set; }
         [ForeignKey("TaskId")]
         public virtual TaskItem? Task { get; set; }
+
+        [Required]
+        public required string UploaderId { get; set; }
+        [ForeignKey("UploaderId")]
+        public virtual ApplicationUser? Uploader { get; set; }
     }
 }

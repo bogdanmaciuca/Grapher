@@ -256,6 +256,11 @@ namespace Grapher.Controllers
 
             if (project == null) return BadRequest("Invalid project.");
 
+            if (project.StartDate.HasValue && taskItem.StartDate < project.StartDate.Value)
+            {
+                ModelState.AddModelError(nameof(TaskItem.StartDate), $"Task start date cannot be earlier than project start date ({project.StartDate.Value.ToShortDateString()}).");
+            }
+
             var currentUserId = currentUser.Id;
             var isAdmin = User.IsInRole(_roles.AdminRole);
             var isOrganizer = project.OrganizerId == currentUserId;
@@ -292,7 +297,7 @@ namespace Grapher.Controllers
                     var memberIds = project.Members.Select(m => m.UserId).ToHashSet();
                     foreach (var user in selectedUsers.Where(u => memberIds.Contains(u)))
                     {
-                        taskItem.Assignments.Add(new TaskAssignment { UserId = user });
+                        taskItem.Assignments.Add(new TaskAssignment { UserId = user, AssignedByUserId = currentUserId });
                     }
                 }
 
@@ -302,7 +307,7 @@ namespace Grapher.Controllers
                     // avoid duplicating if creator already present in selectedUsers
                     if (!taskItem.Assignments.Any(a => a.UserId == currentUserId))
                     {
-                        taskItem.Assignments.Add(new TaskAssignment { UserId = currentUserId });
+                        taskItem.Assignments.Add(new TaskAssignment { UserId = currentUserId, AssignedByUserId = currentUserId });
                     }
                 }
 
@@ -393,6 +398,11 @@ namespace Grapher.Controllers
 
             if (!isAdmin && !isOrganizer && !isCreator) return Forbid();
 
+            if (existingTask.Project != null && existingTask.Project.StartDate.HasValue && taskItem.StartDate < existingTask.Project.StartDate.Value)
+            {
+                ModelState.AddModelError(nameof(TaskItem.StartDate), $"Task start date cannot be earlier than project start date ({existingTask.Project.StartDate.Value.ToShortDateString()}).");
+            }
+
             // Validate parent if provided
             if (taskItem.ParentTaskId.HasValue && taskItem.ParentTaskId.Value != 0)
             {
@@ -442,7 +452,7 @@ namespace Grapher.Controllers
                             {
                                 if (projectMemberIds.Contains(userId))
                                 {
-                                    existingTask.Assignments.Add(new TaskAssignment { UserId = userId });
+                                    existingTask.Assignments.Add(new TaskAssignment { UserId = userId, AssignedByUserId = currentUserId });
                                 }
                             }
                         }
@@ -452,7 +462,7 @@ namespace Grapher.Controllers
                         // Non-organizer creators cannot change assignees � ensure creator remains assigned
                         if (!existingTask.Assignments.Any(a => a.UserId == existingTask.CreatorId))
                         {
-                            existingTask.Assignments.Add(new TaskAssignment { UserId = existingTask.CreatorId });
+                            existingTask.Assignments.Add(new TaskAssignment { UserId = existingTask.CreatorId, AssignedByUserId = currentUserId });
                         }
                     }
 
@@ -616,7 +626,8 @@ namespace Grapher.Controllers
             {
                 Url = url,
                 Type = ext.TrimStart('.').ToLowerInvariant(),
-                TaskId = taskId
+                TaskId = taskId,
+                UploaderId = currentUserId!
             };
 
             _context.Attachments.Add(attachment);
@@ -674,7 +685,8 @@ namespace Grapher.Controllers
             {
                 Url = url,
                 Type = "link",
-                TaskId = taskId
+                TaskId = taskId,
+                UploaderId = currentUserId!
             };
 
             _context.Attachments.Add(attachment);

@@ -9,7 +9,7 @@ namespace Grapher.Services
     public class GeminiAiService : IAiSummaryService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _apiKey;
+        private readonly string? _apiKey;
         private const string ModelId = "gemini-2.5-flash"; 
 
         public GeminiAiService(HttpClient httpClient, IConfiguration configuration)
@@ -105,22 +105,22 @@ namespace Grapher.Services
         // Helper classes for JSON deserialization
         private class GeminiResponse
         {
-            public Candidate[] Candidates { get; set; }
+            public Candidate[]? Candidates { get; set; }
         }
 
         private class Candidate
         {
-            public Content Content { get; set; }
+            public Content? Content { get; set; }
         }
 
         private class Content
         {
-            public Part[] Parts { get; set; }
+            public Part[]? Parts { get; set; }
         }
 
         private class Part
         {
-            public string Text { get; set; }
+            public string? Text { get; set; }
         }
     }
 }

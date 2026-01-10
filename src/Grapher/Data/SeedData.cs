@@ -146,7 +146,7 @@ namespace Grapher.Data
                 CreatorId = bobomac.Id,
                 Creator = bobomac,
                 Assignments = new List<TaskAssignment> {
-                    new TaskAssignment { UserId = odin.Id }
+                    new TaskAssignment { UserId = odin.Id, AssignedByUserId = bobomac.Id }
                 }
             };
 
@@ -160,7 +160,7 @@ namespace Grapher.Data
                 CreatorId = bobomac.Id,
                 Creator = bobomac,
                 Assignments = new List<TaskAssignment> {
-                    new TaskAssignment { UserId = odin.Id }
+                    new TaskAssignment { UserId = odin.Id, AssignedByUserId = bobomac.Id }
                 }
             };
 
@@ -174,7 +174,7 @@ namespace Grapher.Data
                 CreatorId = odin.Id,
                 Creator = odin,
                 Assignments = new List<TaskAssignment> {
-                    new TaskAssignment { UserId = bobomac.Id }
+                    new TaskAssignment { UserId = bobomac.Id, AssignedByUserId = odin.Id }
                 }
             };
 
@@ -191,7 +191,7 @@ namespace Grapher.Data
                     CreatorId = bobomac.Id,
                     Creator = bobomac,
                     Assignments = new List<TaskAssignment> {
-                        new TaskAssignment { UserId = odin.Id }
+                        new TaskAssignment { UserId = odin.Id, AssignedByUserId = bobomac.Id }
                     }
                 },
                 // Grapher
@@ -205,7 +205,7 @@ namespace Grapher.Data
                     CreatorId = coq.Id,
                     Creator = coq,
                     Assignments = new List<TaskAssignment> {
-                        new TaskAssignment { UserId = bobomac.Id }
+                        new TaskAssignment { UserId = bobomac.Id, AssignedByUserId = coq.Id }
                     }
                 },
                 new TaskItem {
@@ -217,7 +217,7 @@ namespace Grapher.Data
                     CreatorId = coq.Id,
                     Creator = coq,
                     Assignments = new List<TaskAssignment> {
-                        new TaskAssignment { UserId = coq.Id }
+                        new TaskAssignment { UserId = coq.Id, AssignedByUserId = coq.Id }
                     }
                 },
                 new TaskItem {
@@ -229,7 +229,7 @@ namespace Grapher.Data
                     CreatorId = coq.Id,
                     Creator = coq,
                     Assignments = new List<TaskAssignment> {
-                        new TaskAssignment { UserId = zeus.Id }
+                        new TaskAssignment { UserId = zeus.Id, AssignedByUserId = coq.Id }
                     }
                 },
                 new TaskItem {
@@ -241,7 +241,7 @@ namespace Grapher.Data
                     CreatorId = coq.Id,
                     Creator = coq,
                     Assignments = new List<TaskAssignment> {
-                        new TaskAssignment { UserId = odin.Id }
+                        new TaskAssignment { UserId = odin.Id, AssignedByUserId = coq.Id }
                     }
                 },
                 // TexEd
@@ -254,7 +254,7 @@ namespace Grapher.Data
                     CreatorId = bobomac.Id,
                     Creator = bobomac,
                     Assignments = new List<TaskAssignment> {
-                        new TaskAssignment { UserId = coq.Id }
+                        new TaskAssignment { UserId = coq.Id, AssignedByUserId = bobomac.Id }
                     }
                 }
             };
