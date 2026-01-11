@@ -292,6 +292,7 @@ namespace Grapher.Controllers
             taskItem.CreatorId = currentUser.Id;
             ModelState.Remove(nameof(TaskItem.Creator));
             ModelState.Remove(nameof(TaskItem.CreatorId));
+            ModelState.Remove(nameof(TaskItem.Project));
 
             if (ModelState.IsValid)
             {
@@ -434,6 +435,7 @@ namespace Grapher.Controllers
             taskItem.CreatorId = existingTask.CreatorId;
             ModelState.Remove(nameof(TaskItem.Creator));
             ModelState.Remove(nameof(TaskItem.CreatorId));
+            ModelState.Remove(nameof(TaskItem.Project));
 
             // Prepare project member ids for validating assignees
             var projectMemberIds = existingTask.Project?.Members?.Select(m => m.UserId).ToHashSet() ?? new HashSet<string>();
@@ -970,6 +972,72 @@ namespace Grapher.Controllers
                 // Recurse
                 await UpdateParentStatusesRecursive(parent.ParentTaskId);
             }
+        }
+
+        // API: Get tasks for a specific project (used for dynamic dropdowns)
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> GetProjectTasks(int projectId)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            var project = await _context.Projects
+                .Include(p => p.Members)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null) return NotFound();
+
+            var isAdmin = User.IsInRole(_roles.AdminRole);
+            var isOrganizer = project.OrganizerId == currentUser.Id;
+            var isMember = project.Members.Any(m => m.UserId == currentUser.Id);
+
+            if (!isAdmin && !isOrganizer && !isMember)
+            {
+                return Forbid();
+            }
+
+            var tasks = await _context.TaskItems
+                .Where(t => t.ProjectId == projectId)
+                .Select(t => new { t.Id, t.Title })
+                .OrderBy(t => t.Title)
+                .ToListAsync();
+
+            return Json(tasks);
+        }
+
+        // API: Get members for a specific project
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> GetProjectMembers(int projectId)
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null) return Unauthorized();
+
+            var project = await _context.Projects
+                .Include(p => p.Members)
+                    .ThenInclude(pm => pm.User)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == projectId);
+
+            if (project == null) return NotFound();
+
+            var isAdmin = User.IsInRole(_roles.AdminRole);
+            var isOrganizer = project.OrganizerId == currentUser.Id;
+            var isMember = project.Members.Any(m => m.UserId == currentUser.Id);
+
+            if (!isAdmin && !isOrganizer && !isMember)
+            {
+                return Forbid();
+            }
+
+            var members = project.Members
+                .Select(m => new { id = m.UserId, userName = m.User.UserName })
+                .OrderBy(u => u.userName)
+                .ToList();
+
+            return Json(members);
         }
     }
 }

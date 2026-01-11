@@ -3,8 +3,8 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
-# work in progress
-README.md
+# no .tex files needed
+*.tex
 
 # dotenv files
 .env

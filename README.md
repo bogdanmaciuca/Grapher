@@ -5,11 +5,11 @@ Grapher este o aplicație clasică de gestionare a sarcinilor în cadrul unui pr
 ## Planificarea - Împărțirea Sarcinilor
 Împărțirea a fost liniară, respectând ideologia de a prioritiza proiectarea unei baze de date solide, pe care să se poată construi convenient cod de **backend**, ca mai apoi să putem termina cu **frontend**-ul.
 
-Având în vedere că am fost o echipă de doi membri cu preferințe relativ diferite, eu *(Matei)* am fost cel responsabil cu proiectarea bazei de date și m-am ocupat predominant de partea de back-end, iar Bogdan a venit în completarea mea și s-a ocupat de majoritatea codului ce implica servicii externe *(integrare AI, autentificare prin e-mail)*.
+Având în vedere că am fost o echipă de doi membri cu preferințe relativ diferite, eu *(Matei)* am fost cel responsabil cu proiectarea bazei de date și m-am ocupat predominant de partea de back-end, iar Bogdan a venit în completarea mea și s-a ocupat de majoritatea codului ce implica servicii externe *(integrare AI, autentificare prin e-mail)*. Pe partea de back-end, am colaborat îndeaproape pentru a ne asigura că toate funcționalitățile sunt implementate corect și eficient, eu fiind cel care s-a ocupat majoritar de `TaskItemsController`, iar Bogdan de `ProjectsController`. Pe partea de front-end, am lucrat împreună pentru a crea o interfață intuitivă și atractivă, împărțind sarcinile în funcție de preferințele fiecăruia, păstrând totuși ideea de design relativ minimalistă.
 
 ## Metodologia de Lucru - Sprinturile
 Am ales să folosim metodologia Agile, trecând prin tot procesul de **Design**$\rightarrow$
-**Develop**$\rightarrow$**Test**$\rightarrow$**Review** în cadrul fiecărui sprint.
+**Develop**$\rightarrow$**Test**$\rightarrow$**Review** în cadrul fiecărui sprint. Am încercat să ne trimitem unul a
 
 Primii pași luați in direcția proiectului au constat în definirea spațiului de lucru general și schițarea pașilor proiectului, fiind luați în cadrul unei întâlniri după care am reușit să cădem de acord la implementarea unui schelet general, a unui scop și a ideii originale *(implicit și modalitatea de implementare a acesteia)*. Un alt aspect important a fost stabilirea unor reguli clare de lucru în echipă, inclusiv convenții de denumire a fișierelor și structura proiectului, pentru a asigura coerența *(și a reduce riscul de conflicte)*.
 ![](resources/trello1.png)
@@ -71,6 +71,8 @@ După finalizarea structurii bazei de date inițiale, am trecut la dezvoltarea f
 
 * **Gestionarea Atașamentelor:** Am dezvoltat logica pentru încărcarea și asocierea fișierelor cu sarcinile, asigurându-ne că fiecare fișier este legat corect de utilizatorul care l-a încărcat. De asemenea, având și posibilitatea de a încărca link-uri, pentru vizualizarea facilă a acestora în interfață am adăugat script HTML specific de **embed** în `Views/TaskItems/Details.cshtml` pentru platformele cele mai populare *(Youtube, Vimeo)*; bineînțeles, am adăugat și logica de validare pentru link-uri *(la nivel de backend)*.
 ![](resources/trello3.png)
+
+* **Gestionarea Comentariilor:** Similară cu logica implementării **atașamentelor**, am creat un sistem simplu de comentarii pentru sarcini, permițând utilizatorilor să adauge feedback sau să discute detalii legate de o sarcină specifică. Comentariile sunt afișate cronologic în `Views/TaskItems/Details.cshtml`, facilitând colaborarea între membrii echipei.
 
 * **Autentificare și Autorizare:** Am configurat sistemul de autentificare folosind **ASP.NET Identity**, personalizând fluxul de înregistrare și autentificare pentru a se potrivi nevoilor aplicației noastre. Am implementat, de asemenea, logica de autorizare pentru a controla accesul la resursele aplicației în funcție de rolurile utilizatorilor.
 
